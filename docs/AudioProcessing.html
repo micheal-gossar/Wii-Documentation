@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Processing - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item active">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Audio › Audio Processing</nav>
+            </div>
+            <h1>Audio Processing</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>The Nintendo Wii features a sophisticated audio subsystem capable of high-quality sound reproduction, real-time audio processing, and advanced sound synthesis. This guide covers the complete audio pipeline from initialization through advanced effects processing.</p>
+
+                <h2>Audio Architecture</h2>
+                <p>The Wii audio system consists of multiple layers working together:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Layer</th>
+                            <th>Purpose</th>
+                            <th>API</th>
+                            <th>Sample Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Hardware (AI)</td><td>Low-level audio interface</td><td>libogc AUDIO_*</td><td>48 kHz</td></tr>
+                        <tr><td>ASND</td><td>Advanced sound library</td><td>libasnd ASND_*</td><td>48 kHz</td></tr>
+                        <tr><td>ModPlay</td><td>Module music playback</td><td>libmodplay MOD_*</td><td>Variable</td></tr>
+                        <tr><td>Ogg Vorbis</td><td>Compressed audio</td><td>libvorbisidec ov_*</td><td>Variable</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>System Initialization</h2>
+                <p>Proper audio initialization is crucial for stable operation:</p>
+
+                <h3>Basic Setup</h3>
+                <pre><code>#include &lt;asndlib.h&gt;
+#include &lt;audio.h&gt;
+#include &lt;lwp.h&gt;
+
+// Audio configuration
+#define AUDIO_SAMPLE_RATE 48000
+#define AUDIO_CHANNELS 2
+#define AUDIO_BUFFER_SIZE 1024
+
+static bool audio_initialized = false;
+
+int initialize_audio_system() {
+    // Initialize hardware audio interface
+    AUDIO_Init(NULL);
+    AUDIO_SetDSPSampleRate(AI_SAMPLERATE_48KHZ);
+    AUDIO_RegisterDMACallback(NULL);
+    
+    // Initialize Advanced Sound library
+    ASND_Init();
+    ASND_Pause(0); // Unpause audio
+    
+    // Set master volume (0-255)
+    ASND_SetVoice(ASND_GetFirstUnusedVoice(), 
+                  VOICE_STEREO_16BIT, 
+                  AUDIO_SAMPLE_RATE, 
+                  0, 
+                  NULL, 
+                  0, 
+                  255, // Left volume
+                  255  // Right volume
+    );
+    
+    audio_initialized = true;
+    printf("Audio system initialized successfully\n");
+    return 0;
+}
+
+void shutdown_audio_system() {
+    if(audio_initialized) {
+        ASND_End();
+        audio_initialized = false;
+        printf("Audio system shut down\n");
+    }
+}</code></pre>
+
+                <h3>Audio Thread Setup</h3>
+                <pre><code>#include &lt;ogc/lwp.h&gt;
+
+#define AUDIO_THREAD_PRIORITY 40
+#define AUDIO_STACK_SIZE 8192
+
+static lwp_t audio_thread;
+static u8 audio_stack[AUDIO_STACK_SIZE] ATTRIBUTE_ALIGN(8);
+static volatile bool audio_thread_running = false;
+
+void* audio_thread_func(void* arg) {
+    s16 audio_buffer[AUDIO_BUFFER_SIZE * 2]; // Stereo
+    
+    while(audio_thread_running) {
+        // Generate or process audio
+        generate_audio_frame(audio_buffer, AUDIO_BUFFER_SIZE);
+        
+        // Submit to audio system
+        AUDIO_StopDMA();
+        DCFlushRange(audio_buffer, sizeof(audio_buffer));
+        AUDIO_InitDMA((u32)audio_buffer, sizeof(audio_buffer));
+        AUDIO_StartDMA();
+        
+        // Wait for DMA completion
+        while(AUDIO_GetDMABytesLeft() > 0) {
+            LWP_YieldThread();
+        }
+    }
+    
+    return NULL;
+}
+
+void start_audio_thread() {
+    audio_thread_running = true;
+    LWP_CreateThread(&audio_thread,
+                     audio_thread_func,
+                     NULL,
+                     audio_stack,
+                     AUDIO_STACK_SIZE,
+                     AUDIO_THREAD_PRIORITY);
+}
+
+void stop_audio_thread() {
+    audio_thread_running = false;
+    LWP_JoinThread(audio_thread, NULL);
+}</code></pre>
+
+                <h2>Sound Effect Playback</h2>
+                <p>ASND provides a powerful voice management system for playing multiple sounds simultaneously:</p>
+
+                <h3>WAV File Playback</h3>
+                <pre><code>typedef struct {
+    u16 format;
+    u16 channels;
+    u32 sample_rate;
+    u32 byte_rate;
+    u16 block_align;
+    u16 bits_per_sample;
+} WAVFormat;
+
+typedef struct {
+    s16* data;
+    u32 length;
+    u32 sample_rate;
+    u8 channels;
+    u8 bits_per_sample;
+} AudioSample;
+
+AudioSample* load_wav_file(const char* filename) {
+    FILE* file = fopen(filename, "rb");
+    if(!file) return NULL;
+    
+    // Skip RIFF header
+    fseek(file, 12, SEEK_SET);
+    
+    WAVFormat format;
+    u32 chunk_size;
+    
+    // Find format chunk
+    while(fread(&chunk_size, 4, 1, file)) {
+        if(ftell(file) - 4 == 12) { // Format chunk
+            fread(&format, sizeof(WAVFormat), 1, file);
+            break;
+        }
+        fseek(file, chunk_size, SEEK_CUR);
+    }
+    
+    // Find data chunk
+    while(fread(&chunk_size, 4, 1, file)) {
+        if(ftell(file) - 4 > 20) { // Past format chunk
+            break;
+        }
+        fseek(file, chunk_size, SEEK_CUR);
+    }
+    
+    // Allocate and load audio data
+    AudioSample* sample = malloc(sizeof(AudioSample));
+    sample->length = chunk_size / (format.bits_per_sample / 8);
+    sample->data = memalign(32, chunk_size);
+    sample->sample_rate = format.sample_rate;
+    sample->channels = format.channels;
+    sample->bits_per_sample = format.bits_per_sample;
+    
+    fread(sample->data, chunk_size, 1, file);
+    DCFlushRange(sample->data, chunk_size);
+    
+    fclose(file);
+    return sample;
+}
+
+void play_sound_effect(AudioSample* sample, f32 volume, f32 pitch) {
+    if(!sample) return;
+    
+    int voice = ASND_GetFirstUnusedVoice();
+    if(voice >= 0) {
+        u32 voice_format = (sample->channels == 2) ? VOICE_STEREO_16BIT : VOICE_MONO_16BIT;
+        u32 adjusted_rate = (u32)(sample->sample_rate * pitch);
+        u8 vol = (u8)(volume * 255.0f);
+        
+        ASND_SetVoice(voice,
+                      voice_format,
+                      adjusted_rate,
+                      0, // Delay
+                      sample->data,
+                      sample->length * (sample->bits_per_sample / 8),
+                      vol, vol);
+    }
+}
+
+void free_audio_sample(AudioSample* sample) {
+    if(sample) {
+        if(sample->data) free(sample->data);
+        free(sample);
+    }
+}</code></pre>
+
+                <h2>Music Streaming</h2>
+                <p>For background music and large audio files, streaming is essential to conserve memory:</p>
+
+                <h3>Ogg Vorbis Streaming</h3>
+                <pre><code>#include &lt;tremor/ivorbiscodec.h&gt;
+#include &lt;tremor/ivorbisfile.h&gt;
+
+typedef struct {
+    OggVorbis_File vf;
+    FILE* file;
+    s16* buffer;
+    u32 buffer_size;
+    int current_section;
+    bool loop;
+    bool playing;
+    int voice;
+} OggStream;
+
+OggStream* create_ogg_stream(const char* filename, bool loop) {
+    OggStream* stream = malloc(sizeof(OggStream));
+    if(!stream) return NULL;
+    
+    // Open file
+    stream->file = fopen(filename, "rb");
+    if(!stream->file) {
+        free(stream);
+        return NULL;
+    }
+    
+    // Initialize Ogg Vorbis
+    if(ov_open(stream->file, &stream->vf, NULL, 0) < 0) {
+        fclose(stream->file);
+        free(stream);
+        return NULL;
+    }
+    
+    // Get stream info
+    vorbis_info* vi = ov_info(&stream->vf, -1);
+    printf("Ogg Stream: %d Hz, %d channels\n", vi->rate, vi->channels);
+    
+    // Allocate buffer (1/4 second of audio)
+    stream->buffer_size = vi->rate * vi->channels / 2; // 16-bit samples
+    stream->buffer = memalign(32, stream->buffer_size * sizeof(s16));
+    
+    stream->current_section = 0;
+    stream->loop = loop;
+    stream->playing = false;
+    stream->voice = -1;
+    
+    return stream;
+}
+
+int ogg_stream_read(OggStream* stream) {
+    if(!stream || !stream->playing) return 0;
+    
+    int bytes_read = 0;
+    int total_bytes = 0;
+    
+    while(total_bytes < stream->buffer_size * sizeof(s16)) {
+        bytes_read = ov_read(&stream->vf,
+                            (char*)stream->buffer + total_bytes,
+                            (stream->buffer_size * sizeof(s16)) - total_bytes,
+                            &stream->current_section);
+        
+        if(bytes_read == 0) { // End of file
+            if(stream->loop) {
+                ov_pcm_seek(&stream->vf, 0); // Restart
+                continue;
+            } else {
+                stream->playing = false;
+                break;
+            }
+        } else if(bytes_read < 0) {
+            printf("Ogg decode error: %d\n", bytes_read);
+            break;
+        }
+        
+        total_bytes += bytes_read;
+    }
+    
+    DCFlushRange(stream->buffer, total_bytes);
+    return total_bytes / sizeof(s16);
+}
+
+void ogg_stream_callback(s32 voice) {
+    // This callback is called when the voice needs more data
+    OggStream* stream = (OggStream*)ASND_GetVoiceUserData(voice);
+    if(stream) {
+        int samples = ogg_stream_read(stream);
+        if(samples > 0) {
+            ASND_AddVoice(voice, stream->buffer, samples * sizeof(s16));
+        }
+    }
+}
+
+void play_ogg_stream(OggStream* stream, f32 volume) {
+    if(!stream) return;
+    
+    vorbis_info* vi = ov_info(&stream->vf, -1);
+    
+    stream->voice = ASND_GetFirstUnusedVoice();
+    if(stream->voice >= 0) {
+        stream->playing = true;
+        
+        // Fill initial buffer
+        int samples = ogg_stream_read(stream);
+        
+        u32 voice_format = (vi->channels == 2) ? VOICE_STEREO_16BIT : VOICE_MONO_16BIT;
+        u8 vol = (u8)(volume * 255.0f);
+        
+        ASND_SetVoice(stream->voice,
+                      voice_format,
+                      vi->rate,
+                      0,
+                      stream->buffer,
+                      samples * sizeof(s16),
+                      vol, vol);
+        
+        ASND_SetVoiceCallback(stream->voice, ogg_stream_callback);
+        ASND_SetVoiceUserData(stream->voice, stream);
+    }
+}
+
+void stop_ogg_stream(OggStream* stream) {
+    if(stream && stream->voice >= 0) {
+        ASND_StopVoice(stream->voice);
+        stream->playing = false;
+        stream->voice = -1;
+    }
+}
+
+void destroy_ogg_stream(OggStream* stream) {
+    if(stream) {
+        stop_ogg_stream(stream);
+        ov_clear(&stream->vf);
+        if(stream->buffer) free(stream->buffer);
+        free(stream);
+    }
+}</code></pre>
+
+                <h2>Real-Time Audio Effects</h2>
+                <p>Implement custom audio effects for enhanced audio experience:</p>
+
+                <h3>Digital Signal Processing</h3>
+                <pre><code>typedef struct {
+    f32 cutoff_freq;
+    f32 resonance;
+    f32 sample_rate;
+    f32 a0, a1, a2, b1, b2;
+    f32 x1, x2, y1, y2;
+} LowPassFilter;
+
+void init_lowpass_filter(LowPassFilter* filter, f32 cutoff, f32 resonance, f32 sample_rate) {
+    filter->cutoff_freq = cutoff;
+    filter->resonance = resonance;
+    filter->sample_rate = sample_rate;
+    
+    // Calculate filter coefficients
+    f32 omega = 2.0f * M_PI * cutoff / sample_rate;
+    f32 sin_omega = sinf(omega);
+    f32 cos_omega = cosf(omega);
+    f32 alpha = sin_omega / (2.0f * resonance);
+    
+    filter->a0 = (1.0f - cos_omega) / 2.0f;
+    filter->a1 = 1.0f - cos_omega;
+    filter->a2 = (1.0f - cos_omega) / 2.0f;
+    filter->b1 = -2.0f * cos_omega;
+    filter->b2 = 1.0f - alpha;
+    
+    // Normalize
+    f32 norm = 1.0f + alpha;
+    filter->a0 /= norm;
+    filter->a1 /= norm;
+    filter->a2 /= norm;
+    filter->b1 /= norm;
+    filter->b2 /= norm;
+    
+    // Initialize delay elements
+    filter->x1 = filter->x2 = filter->y1 = filter->y2 = 0.0f;
+}
+
+f32 process_lowpass_filter(LowPassFilter* filter, f32 input) {
+    f32 output = filter->a0 * input + 
+                 filter->a1 * filter->x1 + 
+                 filter->a2 * filter->x2 -
+                 filter->b1 * filter->y1 - 
+                 filter->b2 * filter->y2;
+    
+    // Update delay elements
+    filter->x2 = filter->x1;
+    filter->x1 = input;
+    filter->y2 = filter->y1;
+    filter->y1 = output;
+    
+    return output;
+}
+
+// Reverb effect using Schroeder model
+#define REVERB_COMB_DELAYS 4
+#define REVERB_ALLPASS_DELAYS 2
+
+typedef struct {
+    f32* comb_buffers[REVERB_COMB_DELAYS];
+    u32 comb_delays[REVERB_COMB_DELAYS];
+    u32 comb_indices[REVERB_COMB_DELAYS];
+    f32 comb_feedbacks[REVERB_COMB_DELAYS];
+    
+    f32* allpass_buffers[REVERB_ALLPASS_DELAYS];
+    u32 allpass_delays[REVERB_ALLPASS_DELAYS];
+    u32 allpass_indices[REVERB_ALLPASS_DELAYS];
+    f32 allpass_feedbacks[REVERB_ALLPASS_DELAYS];
+    
+    f32 wet_level;
+    f32 dry_level;
+} ReverbEffect;
+
+ReverbEffect* create_reverb_effect(f32 room_size, f32 damping, f32 wet_level) {
+    ReverbEffect* reverb = malloc(sizeof(ReverbEffect));
+    
+    // Initialize comb filters
+    u32 base_delays[] = {1116, 1188, 1277, 1356};
+    f32 base_feedback = 0.5f + room_size * 0.28f;
+    
+    for(int i = 0; i < REVERB_COMB_DELAYS; i++) {
+        reverb->comb_delays[i] = base_delays[i];
+        reverb->comb_buffers[i] = calloc(reverb->comb_delays[i], sizeof(f32));
+        reverb->comb_indices[i] = 0;
+        reverb->comb_feedbacks[i] = base_feedback * (1.0f - damping);
+    }
+    
+    // Initialize allpass filters
+    u32 allpass_delays[] = {556, 441};
+    f32 allpass_feedback = 0.5f;
+    
+    for(int i = 0; i < REVERB_ALLPASS_DELAYS; i++) {
+        reverb->allpass_delays[i] = allpass_delays[i];
+        reverb->allpass_buffers[i] = calloc(reverb->allpass_delays[i], sizeof(f32));
+        reverb->allpass_indices[i] = 0;
+        reverb->allpass_feedbacks[i] = allpass_feedback;
+    }
+    
+    reverb->wet_level = wet_level;
+    reverb->dry_level = 1.0f - wet_level;
+    
+    return reverb;
+}
+
+f32 process_reverb_effect(ReverbEffect* reverb, f32 input) {
+    f32 reverb_output = 0.0f;
+    
+    // Process comb filters in parallel
+    for(int i = 0; i < REVERB_COMB_DELAYS; i++) {
+        f32 delayed = reverb->comb_buffers[i][reverb->comb_indices[i]];
+        f32 filtered = input + delayed * reverb->comb_feedbacks[i];
+        
+        reverb->comb_buffers[i][reverb->comb_indices[i]] = filtered;
+        reverb->comb_indices[i] = (reverb->comb_indices[i] + 1) % reverb->comb_delays[i];
+        
+        reverb_output += delayed;
+    }
+    
+    reverb_output /= REVERB_COMB_DELAYS;
+    
+    // Process allpass filters in series
+    for(int i = 0; i < REVERB_ALLPASS_DELAYS; i++) {
+        f32 delayed = reverb->allpass_buffers[i][reverb->allpass_indices[i]];
+        f32 output = -reverb->allpass_feedbacks[i] * reverb_output + delayed;
+        
+        reverb->allpass_buffers[i][reverb->allpass_indices[i]] = 
+            reverb_output + reverb->allpass_feedbacks[i] * delayed;
+        reverb->allpass_indices[i] = (reverb->allpass_indices[i] + 1) % reverb->allpass_delays[i];
+        
+        reverb_output = output;
+    }
+    
+    return input * reverb->dry_level + reverb_output * reverb->wet_level;
+}</code></pre>
+
+                <div class="info-box">
+                    <h4>Audio Processing Best Practices</h4>
+                    <ul>
+                        <li>Use high-priority threads (40-60) for audio processing to prevent dropouts</li>
+                        <li>Always flush cache after writing audio data with <code>DCFlushRange()</code></li>
+                        <li>Keep audio buffers aligned to 32-byte boundaries</li>
+                        <li>Use double-buffering for streaming audio to prevent clicks and pops</li>
+                        <li>Monitor CPU usage - audio processing should use <10% CPU time</li>
+                        <li>Implement graceful degradation for complex effects under CPU load</li>
+                        <li>Use fixed-point arithmetic for performance-critical DSP operations</li>
+                        <li>Stream large audio files rather than loading them entirely into memory</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="SpatialAudio.html">3D Audio</a> - Positional audio and environmental effects</li>
+                        <li><a href="AudioStreaming.html">Audio Streaming</a> - Advanced streaming techniques</li>
+                        <li><a href="Threading.html">Threading</a> - Audio thread implementation</li>
+                        <li><a href="Performance.html">Performance Optimization</a> - Audio performance tips</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+            <h2>Playing Sound Effects</h2>
+            <p>Sound effects are typically short, uncompressed audio samples (like WAV files) loaded into memory. <code>libasnd</code> manages a pool of "voices" that can play these sounds.</p>
+            
+            <h3>Loading Sound Data</h3>
+            <p>You are responsible for loading sound data into memory. The data should be 16-bit PCM, preferably stereo. If you have mono sound, you must convert it to stereo by duplicating the channel data. The memory for the sound data must be 32-byte aligned, so use <code>memalign</code>.</p>
+
+            <h3>Core Functions</h3>
+            <dl>
+                <dt><code>s32 ASND_GetFirstUnusedVoice()</code></dt>
+                <dd>Finds an available voice to play a new sound. Returns a voice ID or a negative error code if no voices are free.</dd>
+                
+                <dt><code>s32 ASND_SetVoice(s32 voice, u32 format, u32 pitch, u32 delay, void *sound_data, u32 data_size, s32 vol_l, s32 vol_r, ASND_VOICE_CALLBACK callback)</code></dt>
+                <dd>Plays a sound on a specific voice.
+                    <ul>
+                        <li><code>voice</code>: The ID from <code>ASND_GetFirstUnusedVoice()</code>.</li>
+                        <li><code>format</code>: The sample format, e.g., <code>VOICE_STEREO_16BIT</code>.</li>
+                        <li><code>pitch</code>: The sample rate of the sound (e.g., 48000).</li>
+                        <li><code>sound_data</code>: A pointer to the 32-byte aligned audio data.</li>
+                        <li><code>data_size</code>: The size of the audio data in bytes.</li>
+                        <li><code>vol_l</code>, <code>vol_r</code>: Left and right channel volume (0-255).</li>
+                        <li><code>callback</code>: A function to call when the sound finishes (or <code>NULL</code> for no callback).</li>
+                    </ul>
+                </dd>
+
+                <dt><code>s32 ASND_StopVoice(s32 voice)</code></dt>
+                <dd>Stops a currently playing sound on the specified voice.</dd>
+            </dl>
+
+            <h3>Example</h3>
+            <pre><code class="language-cpp">// Assume 'soundBuffer' is a pointer to aligned 16-bit stereo PCM data
+// and 'soundSize' is its size in bytes.
+
+void PlaySound(void* soundBuffer, u32 soundSize) {
+    s32 my_voice = ASND_GetFirstUnusedVoice();
+    if (my_voice < 0) {
+        // No free voices
+        return;
+    }
+
+    // Play sound at 48kHz, full volume (255)
+    ASND_SetVoice(my_voice, VOICE_STEREO_16BIT, 48000, 0,
+                  soundBuffer, soundSize, 255, 255, NULL);
+}
+</code></pre>
+        </div>
+
+        <div>
+            <h2>Music Streaming (OGG Vorbis)</h2>
+            <p>For long audio files like background music, streaming is essential to conserve memory. The <code>tremor</code> library (a fixed-point OGG Vorbis decoder) is used for this. The strategy is to decode small chunks of the OGG file into memory buffers and feed them to ASND one by one.</p>
+
+            <h3>Core Functions (tremor)</h3>
+             <dl>
+                <dt><code>int ov_open(FILE *f, OggVorbis_File *vf, char *initial, long ibytes)</code></dt>
+                <dd>Opens an OGG file and prepares it for decoding.</dd>
+                
+                <dt><code>long ov_read(OggVorbis_File *vf, char *buffer, int length, int *bitstream)</code></dt>
+                <dd>Decodes a chunk of the OGG file into a PCM data buffer. You repeatedly call this to get audio data.</dd>
+
+                <dt><code>int ov_clear(OggVorbis_File *vf)</code></dt>
+                <dd>Closes the OGG file and releases decoder resources.</dd>
+            </dl>
+
+            <h3>Streaming Logic</h3>
+            <p>The general approach for streaming is as follows:</p>
+            <ol>
+                <li>Create at least two buffers for audio data (double-buffering).</li>
+                <li>Open the OGG file using <code>ov_open</code>.</li>
+                <li>In a loop, fill one buffer with decoded data using <code>ov_read</code>.</li>
+                <li>Play the filled buffer using <code>ASND_SetVoice</code>, and provide a callback function.</li>
+                <li>While that buffer is playing, start filling the next buffer in the background (e.g., in another thread).</li>
+                <li>When the ASND callback is triggered (signaling the buffer has finished playing), play the next filled buffer.</li>
+                <li>Repeat until the song is over.</li>
+            </ol>
+            <p>This process requires careful management of buffers and state, often involving threading for smooth, non-blocking playback.</p>
+        </div>
+    </main>
+  </div>
+</body>
+</html>

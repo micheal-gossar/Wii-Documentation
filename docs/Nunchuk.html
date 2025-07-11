@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nunchuk - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+        <a href="Miis.html" class="nav-item">Mii Integration</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Wii Nunchuk</h1>
+      <p class="intro">The Nunchuk is the most common accessory for the Wiimote, adding an analog stick, two trigger buttons (C and Z), and a 3-axis accelerometer.</p>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>The Nunchuk connects to the Wiimote's extension port. Its presence is detected automatically by <code>WPAD_ScanPads()</code> if an expansion callback is registered. The data is then delivered as part of the main Wiimote data packet.</p>
+      </section>
+
+      <section id="reading-data">
+        <h2>Reading Nunchuk Data</h2>
+        <p>It is essential to first check <code>wpad_data->exp.type</code> to confirm a Nunchuk is present before accessing its data. The data is located in the <code>exp.nunchuk</code> member of the <code>WPADData</code> struct.</p>
+        
+        <h4>Data Structures</h4>
+        <p>The Nunchuk data is contained within the <code>nunchuk_t</code> struct, which includes a <code>joystick_t</code> for the analog stick.</p>
+        <pre><code class="language-cpp">// In your main loop, after WPAD_ScanPads()
+WPADData* wpad_data = WPAD_Data(WPAD_CHAN_0);
+
+// First, verify that a Nunchuk is connected
+if (wpad_data->exp.type == WPAD_EXP_NUNCHUK) {
+    // Safely access the Nunchuk's data
+    joystick_t* stick = &wpad_data->exp.nunchuk.js;
+
+    // Implement a deadzone for the analog stick
+    if (stick->mag > 0.15f) {
+        printf("Stick: (%.2f, %.2f), Angle: %.1f, Mag: %.2f\n", 
+            stick->x, stick->y, stick->ang, stick->mag);
+    }
+
+    // Button presses are checked using the main Wiimote button masks
+    u32 held = WPAD_ButtonsHeld(0);
+    if (held & WPAD_NUNCHUK_BUTTON_C) {
+        // C button is held
+    }
+    if (held & WPAD_NUNCHUK_BUTTON_Z) {
+        // Z button is held
+    }
+}
+</code></pre>
+      </section>
+
+      <section id="callback">
+        <h2>Expansion Callback</h2>
+        <p>This callback is the foundation of reliable accessory management. It is triggered automatically by <code>WPAD_ScanPads()</code> whenever a device is plugged into or removed from the Wiimote's extension port.</p>
+        <pre><code class="language-cpp">// The callback function that you register with WPAD_SetExpansionCallback
+static void expansion_callback(s32 chan, s32 type) {
+    switch(type) {
+        case WPAD_EXP_NUNCHUK:
+            printf("Nunchuk connected to channel %d\n", chan);
+            break;
+        case WPAD_EXP_CLASSIC:
+            printf("Classic Controller connected to channel %d\n", chan);
+            break;
+        default:
+            printf("Unknown or no expansion on channel %d\n", chan);
+            break;
+    }
+}
+
+// In your initialization code:
+// WPAD_SetExpansionCallback(expansion_callback);
+</code></pre>
+      </section>
+
+      <section id="constants-reference">
+        <h2>Constants Reference</h2>
+        <table>
+          <thead>
+            <tr><th>Constant</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>WPAD_EXP_NUNCHUK</code></td><td>The value in <code>exp.type</code> that identifies a Nunchuk.</td></tr>
+            <tr><td><code>WPAD_NUNCHUK_BUTTON_C</code></td><td>Bitmask for the 'C' button. Use with <code>WPAD_ButtonsDown</code>, etc.</td></tr>
+            <tr><td><code>WPAD_NUNCHUK_BUTTON_Z</code></td><td>Bitmask for the 'Z' button. Use with <code>WPAD_ButtonsDown</code>, etc.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

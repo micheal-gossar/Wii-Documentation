@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiimote Core - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item active">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; Wiimote Core</nav>
+            </div>
+            <h1>Wiimote Core</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>
+                This page covers the fundamental features of the Wiimote, managed by the `libogc` library `wpad.h`. This includes initializing the system, reading button presses and accelerometer data, and controlling feedback like rumble and LEDs.
+            </p>
+
+            <h2>Initialization and Polling</h2>
+            <p>
+                Before you can read from a Wiimote, you must initialize the WPAD system. This is done once at the start of your application.
+            </p>
+            <pre><code class="c">
+#include &lt;wpad.h&gt;
+
+void main() {
+    // Initialize the Wiimote system
+    WPAD_Init();
+
+    // ... your main loop ...
+}
+            </code></pre>
+            <p>
+                Inside your main game loop, you must call `WPAD_ScanPads()` once per frame. This function polls all connected Wiimotes and updates their internal state. After calling it, you can get the latest input data.
+            </p>
+
+            <h2>Reading Button Presses</h2>
+            <p>
+                The most common task is reading button presses. `libogc` provides functions to check which buttons were just pressed, which are currently held, and which were just released.
+            </p>
+            <pre><code class="c">
+#include &lt;wpad.h&gt;
+
+void my_game_loop() {
+    // Poll all connected controllers
+    WPAD_ScanPads();
+
+    // Get buttons that were just pressed down this frame for the first Wiimote (channel 0)
+    u32 buttons_down = WPAD_ButtonsDown(0);
+
+    if (buttons_down & WPAD_BUTTON_A) {
+        printf("A button was pressed!\n");
+    }
+    if (buttons_down & WPAD_BUTTON_HOME) {
+        printf("Home button was pressed!\n");
+    }
+
+    // Get buttons that are currently held down
+    u32 buttons_held = WPAD_ButtonsHeld(0);
+
+    if (buttons_held & WPAD_BUTTON_B) {
+        printf("B button is being held.\n");
+    }
+}
+            </code></pre>
+            <h3>Button Constants</h3>
+            <p>The button state is a bitmask. You check for a specific button using the `&` operator and these constants:</p>
+            <ul>
+                <li>`WPAD_BUTTON_A`, `WPAD_BUTTON_B`</li>
+                <li>`WPAD_BUTTON_1`, `WPAD_BUTTON_2`</li>
+                <li>`WPAD_BUTTON_PLUS`, `WPAD_BUTTON_MINUS`, `WPAD_BUTTON_HOME`</li>
+                <li>`WPAD_BUTTON_UP`, `WPAD_BUTTON_DOWN`, `WPAD_BUTTON_LEFT`, `WPAD_BUTTON_RIGHT` (for the D-Pad)</li>
+            </ul>
+
+            <h2>Accelerometer</h2>
+            <p>
+                The Wiimote contains a 3-axis accelerometer that measures motion and gravity. You can access this data after calling `WPAD_ScanPads()`.
+            </p>
+            <pre><code class="c">
+#include &lt;wpad.h&gt;
+
+void check_accelerometer() {
+    WPAD_ScanPads();
+    WPADData *data = WPAD_Data(0); // Get full data for Wiimote 0
+
+    if (data->err == WPAD_ERR_NONE) {
+        // The 'accel' struct contains the raw sensor values.
+        // 'gforce' contains a smoothed-out calculation of g-forces.
+        printf("G-Forces: X=%.2f, Y=%.2f, Z=%.2f\n",
+               data->gforce.x, data->gforce.y, data->gforce.z);
+    }
+}
+            </code></pre>
+
+            <h2>Rumble and LEDs</h2>
+            <p>You can provide physical and visual feedback to the player using rumble and the player LEDs.</p>
+            <pre><code class="c">
+#include &lt;wpad.h&gt;
+
+void set_feedback() {
+    // Turn rumble ON for the first Wiimote
+    WPAD_Rumble(0, 1);
+
+    // A short delay...
+    // for(int i=0; i<100000; ++i);
+
+    // Turn rumble OFF
+    WPAD_Rumble(0, 0);
+
+    // Set the player LEDs. The second argument is a bitmask.
+    // Light up LED 1 and LED 4 (binary 1001 = decimal 9)
+    WPAD_SetLeds(0, WPAD_LED_1 | WPAD_LED_4);
+}
+            </code></pre>
+
+            <h2>Power and Connection Callbacks</h2>
+            <p>
+                Your application should handle events like the user pressing the power button or a controller disconnecting. This is done by registering callback functions.
+            </p>
+            <pre><code class="c">
+#include &lt;wpad.h&gt;
+#include &lt;stdlib.h&gt; // For exit()
+
+// This function will be called when the user presses the power button
+void power_button_callback() {
+    printf("Power button pressed. Shutting down.\n");
+    exit(0);
+}
+
+// This function is called when a controller connects or disconnects
+void connection_callback(s32 chan, s32 event) {
+    if (event == WPAD_EVENT_CONNECT) {
+        printf("Wiimote %d connected.\n", chan);
+    } else if (event == WPAD_EVENT_DISCONNECT) {
+        printf("Wiimote %d disconnected.\n", chan);
+    }
+}
+
+void setup_callbacks() {
+    WPAD_SetPowerButtonCallback(power_button_callback);
+    WPAD_SetConnectCallback(connection_callback);
+}
+            </code></pre>
+            <h2>Advanced Wiimote Techniques</h2>
+            
+            <h3>Motion Gesture Recognition</h3>
+            <p>Implement sophisticated gesture recognition using accelerometer data:</p>
+            <pre><code>typedef struct {
+    float x, y, z;
+    u32 timestamp;
+} AccelSample;
+
+typedef struct {
+    AccelSample samples[32];
+    int sample_count;
+    int current_index;
+    float magnitude_threshold;
+    bool gesture_active;
+} GestureRecognizer;
+
+void update_gesture_recognizer(GestureRecognizer* gr, WPADData* data) {
+    AccelSample* sample = &gr->samples[gr->current_index];
+    sample->x = data->accel.x;
+    sample->y = data->accel.y;
+    sample->z = data->accel.z;
+    sample->timestamp = gettime();
+    
+    gr->current_index = (gr->current_index + 1) % 32;
+    if (gr->sample_count < 32) gr->sample_count++;
+    
+    // Calculate motion magnitude
+    float magnitude = sqrt(sample->x * sample->x + 
+                          sample->y * sample->y + 
+                          sample->z * sample->z);
+    
+    // Detect gesture start/end
+    if (magnitude > gr->magnitude_threshold && !gr->gesture_active) {
+        gr->gesture_active = true;
+        printf("Gesture started\n");
+    } else if (magnitude < gr->magnitude_threshold && gr->gesture_active) {
+        gr->gesture_active = false;
+        analyze_gesture_pattern(gr);
+    }
+}
+
+int analyze_gesture_pattern(GestureRecognizer* gr) {
+    if (gr->sample_count < 8) return GESTURE_NONE;
+    
+    // Analyze X-axis dominant motion
+    float x_variance = calculate_variance_x(gr);
+    float y_variance = calculate_variance_y(gr);
+    float z_variance = calculate_variance_z(gr);
+    
+    if (x_variance > y_variance && x_variance > z_variance) {
+        return analyze_horizontal_gesture(gr);
+    } else if (y_variance > x_variance && y_variance > z_variance) {
+        return analyze_vertical_gesture(gr);
+    } else {
+        return analyze_forward_gesture(gr);
+    }
+}
+
+int analyze_horizontal_gesture(GestureRecognizer* gr) {
+    float start_x = gr->samples[0].x;
+    float end_x = gr->samples[gr->sample_count - 1].x;
+    
+    if (end_x - start_x > 0.3f) {
+        return GESTURE_SWIPE_RIGHT;
+    } else if (start_x - end_x > 0.3f) {
+        return GESTURE_SWIPE_LEFT;
+    }
+    return GESTURE_NONE;
+}</code></pre>
+
+            <h3>Precise Pointing Calibration</h3>
+            <p>Implement advanced IR pointer calibration for pixel-perfect accuracy:</p>
+            <pre><code>typedef struct {
+    float screen_width, screen_height;
+    float ir_width, ir_height;
+    float center_x, center_y;
+    float rotation;
+    float distance_factor;
+} IRCalibration;
+
+typedef struct {
+    float x, y;
+    bool valid;
+    float smoothed_x, smoothed_y;
+    float velocity_x, velocity_y;
+} IRPointer;
+
+void calibrate_ir_pointing(IRCalibration* cal, WPADData* data) {
+    if (data->ir.valid) {
+        // Multi-point calibration using sensor bar
+        ir_t* ir = data->ir.dot;
+        
+        if (ir[0].visible && ir[1].visible) {
+            // Calculate sensor bar distance and angle
+            float dx = ir[1].x - ir[0].x;
+            float dy = ir[1].y - ir[0].y;
+            float distance = sqrt(dx * dx + dy * dy);
+            float angle = atan2(dy, dx);
+            
+            // Update calibration parameters
+            cal->ir_width = distance;
+            cal->rotation = angle;
+            cal->center_x = (ir[0].x + ir[1].x) / 2.0f;
+            cal->center_y = (ir[0].y + ir[1].y) / 2.0f;
+            
+            // Estimate distance based on sensor separation
+            cal->distance_factor = 1024.0f / distance;
+        }
+    }
+}
+
+void update_ir_pointer(IRPointer* pointer, WPADData* data, IRCalibration* cal) {
+    if (data->ir.valid) {
+        // Raw IR coordinates (0-1023)
+        float raw_x = data->ir.x;
+        float raw_y = data->ir.y;
+        
+        // Apply calibration transform
+        float centered_x = raw_x - cal->center_x;
+        float centered_y = raw_y - cal->center_y;
+        
+        // Rotate if sensor bar is tilted
+        float cos_rot = cos(cal->rotation);
+        float sin_rot = sin(cal->rotation);
+        float rotated_x = centered_x * cos_rot - centered_y * sin_rot;
+        float rotated_y = centered_x * sin_rot + centered_y * cos_rot;
+        
+        // Scale to screen coordinates
+        pointer->x = (rotated_x / 1024.0f) * cal->screen_width;
+        pointer->y = (rotated_y / 768.0f) * cal->screen_height;
+        
+        // Apply smoothing filter
+        if (pointer->valid) {
+            float alpha = 0.7f; // Smoothing factor
+            pointer->smoothed_x = alpha * pointer->x + (1 - alpha) * pointer->smoothed_x;
+            pointer->smoothed_y = alpha * pointer->y + (1 - alpha) * pointer->smoothed_y;
+            
+            // Calculate velocity for prediction
+            pointer->velocity_x = pointer->smoothed_x - pointer->x;
+            pointer->velocity_y = pointer->smoothed_y - pointer->y;
+        } else {
+            pointer->smoothed_x = pointer->x;
+            pointer->smoothed_y = pointer->y;
+            pointer->velocity_x = 0;
+            pointer->velocity_y = 0;
+        }
+        
+        pointer->valid = true;
+    } else {
+        pointer->valid = false;
+    }
+}</code></pre>
+
+            <h3>Multi-Wiimote Management</h3>
+            <p>Handle multiple Wiimotes efficiently with proper resource management:</p>
+            <pre><code>#define MAX_WIIMOTES 4
+
+typedef struct {
+    bool connected;
+    bool extension_connected;
+    u32 extension_type;
+    WPADData last_data;
+    u32 last_buttons;
+    IRPointer pointer;
+    GestureRecognizer gesture;
+    u32 last_update_time;
+    u32 battery_level;
+} WiimoteState;
+
+static WiimoteState wiimotes[MAX_WIIMOTES];
+static bool wiimote_system_initialized = false;
+
+void init_wiimote_system() {
+    if (wiimote_system_initialized) return;
+    
+    WPAD_Init();
+    
+    // Set data format for all controllers
+    for (int i = 0; i < MAX_WIIMOTES; i++) {
+        WPAD_SetDataFormat(i, WPAD_FMT_BTNS_ACC_IR);
+        WPAD_SetVRes(i, 640, 480);
+        
+        memset(&wiimotes[i], 0, sizeof(WiimoteState));
+        init_gesture_recognizer(&wiimotes[i].gesture);
+    }
+    
+    wiimote_system_initialized = true;
+}
+
+void update_all_wiimotes() {
+    WPAD_ScanPads();
+    
+    for (int i = 0; i < MAX_WIIMOTES; i++) {
+        WiimoteState* wii = &wiimotes[i];
+        
+        // Check connection status
+        u32 type;
+        if (WPAD_Probe(i, &type) == WPAD_ERR_NONE) {
+            if (!wii->connected) {
+                wii->connected = true;
+                wii->extension_type = type;
+                printf("Wiimote %d connected (type: %d)\n", i, type);
+            }
+            
+            // Update data
+            WPADData* data = WPAD_Data(i);
+            if (data) {
+                memcpy(&wii->last_data, data, sizeof(WPADData));
+                wii->last_buttons = data->btns_h;
+                wii->last_update_time = gettime();
+                
+                // Update subsystems
+                update_ir_pointer(&wii->pointer, data, &ir_calibration);
+                update_gesture_recognizer(&wii->gesture, data);
+                
+                // Check battery level periodically
+                if ((wii->last_update_time % 3600) == 0) { // Every 60 seconds
+                    wii->battery_level = WPAD_BatteryLevel(i);
+                    if (wii->battery_level < 2) {
+                        printf("Wiimote %d battery low!\n", i);
+                    }
+                }
+            }
+        } else {
+            if (wii->connected) {
+                wii->connected = false;
+                printf("Wiimote %d disconnected\n", i);
+            }
+        }
+    }
+}
+
+bool get_wiimote_button_pressed(int wiimote, u32 button) {
+    if (wiimote >= MAX_WIIMOTES || !wiimotes[wiimote].connected) {
+        return false;
+    }
+    
+    return WPAD_ButtonsDown(wiimote) & button;
+}
+
+bool get_wiimote_button_held(int wiimote, u32 button) {
+    if (wiimote >= MAX_WIIMOTES || !wiimotes[wiimote].connected) {
+        return false;
+    }
+    
+    return WPAD_ButtonsHeld(wiimote) & button;
+}</code></pre>
+
+            <h3>Rumble and Speaker Control</h3>
+            <p>Advanced haptic feedback and audio output through the Wiimote:</p>
+            <pre><code>typedef struct {
+    bool active;
+    u32 start_time;
+    u32 duration;
+    float intensity;
+    u32 pattern_type;
+} RumbleEffect;
+
+#define RUMBLE_PATTERN_CONSTANT 0
+#define RUMBLE_PATTERN_PULSE    1
+#define RUMBLE_PATTERN_FADE     2
+
+void start_rumble_effect(int wiimote, u32 pattern, u32 duration, float intensity) {
+    if (wiimote >= MAX_WIIMOTES || !wiimotes[wiimote].connected) return;
+    
+    RumbleEffect* rumble = &wiimotes[wiimote].rumble;
+    rumble->active = true;
+    rumble->start_time = gettime();
+    rumble->duration = duration;
+    rumble->intensity = intensity;
+    rumble->pattern_type = pattern;
+    
+    WPAD_Rumble(wiimote, 1);
+}
+
+void update_rumble_effects() {
+    u32 current_time = gettime();
+    
+    for (int i = 0; i < MAX_WIIMOTES; i++) {
+        if (!wiimotes[i].connected) continue;
+        
+        RumbleEffect* rumble = &wiimotes[i].rumble;
+        if (!rumble->active) continue;
+        
+        u32 elapsed = current_time - rumble->start_time;
+        if (elapsed >= rumble->duration) {
+            rumble->active = false;
+            WPAD_Rumble(i, 0);
+            continue;
+        }
+        
+        bool should_rumble = true;
+        switch (rumble->pattern_type) {
+            case RUMBLE_PATTERN_PULSE:
+                should_rumble = ((elapsed / 100) % 2) == 0;
+                break;
+            case RUMBLE_PATTERN_FADE:
+                should_rumble = (elapsed < rumble->duration / 2);
+                break;
+        }
+        
+        WPAD_Rumble(i, should_rumble ? 1 : 0);
+    }
+}
+
+// Wiimote speaker functionality
+void play_wiimote_sound(int wiimote, void* sound_data, u32 length) {
+    if (wiimote >= MAX_WIIMOTES || !wiimotes[wiimote].connected) return;
+    
+    // Enable speaker
+    WPAD_ControlSpeaker(wiimote, 1);
+    
+    // Play sound data (must be in specific format)
+    // This is a simplified example - real implementation requires
+    // proper audio format conversion
+    WPAD_SendStreamData(wiimote, sound_data, length);
+}</code></pre>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Optimization - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item active">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="../gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="../gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="../gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="../gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="../gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="../gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="../gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="../gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="../gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Graphics › Performance Optimization</nav>
+            </div>
+            <h1>Performance Optimization</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>Achieving consistent 60 FPS on the Nintendo Wii requires understanding both CPU and GPU bottlenecks. The Broadway CPU runs at 729MHz and the Hollywood GPU at 243MHz, making efficient resource utilization critical for smooth gameplay.</p>
+
+                <h2>CPU Performance Profiling</h2>
+                <p>The PowerPC Time Base register provides high-resolution timing for performance analysis:</p>
+
+                <pre><code>#include &lt;ogc/lwp_watchdog.h&gt;
+
+// Convert time base ticks to milliseconds
+float ticks_to_ms(u64 ticks) {
+    return (float)ticks / (TB_TIMER_CLOCK / 1000.0f);
+}
+
+// Performance profiler structure
+typedef struct {
+    u64 start_time;
+    float frame_times[60];
+    int frame_index;
+    float average_ms;
+} Profiler;
+
+void profiler_begin(Profiler* prof) {
+    prof->start_time = gettime();
+}
+
+void profiler_end(Profiler* prof) {
+    u64 end_time = gettime();
+    u64 diff = diff_ticks(prof->start_time, end_time);
+    
+    prof->frame_times[prof->frame_index] = ticks_to_ms(diff);
+    prof->frame_index = (prof->frame_index + 1) % 60;
+    
+    // Calculate rolling average
+    float sum = 0;
+    for(int i = 0; i < 60; i++) {
+        sum += prof->frame_times[i];
+    }
+    prof->average_ms = sum / 60.0f;
+}</code></pre>
+
+                <h2>GPU Performance Optimization</h2>
+                
+                <h3>Draw Call Batching</h3>
+                <p>Minimize state changes by grouping similar objects together:</p>
+                <pre><code>// BAD: Frequent state changes
+for(int i = 0; i < num_objects; i++) {
+    GX_LoadTexObj(&objects[i].texture, GX_TEXMAP0);
+    draw_object(&objects[i]);
+}
+
+// GOOD: Sort by texture first
+sort_objects_by_texture(objects, num_objects);
+GXTexObj* current_texture = NULL;
+for(int i = 0; i < num_objects; i++) {
+    if(current_texture != &objects[i].texture) {
+        GX_LoadTexObj(&objects[i].texture, GX_TEXMAP0);
+        current_texture = &objects[i].texture;
+    }
+    draw_object(&objects[i]);
+}</code></pre>
+
+                <h3>Display Lists for Static Geometry</h3>
+                <p>Use display lists to cache frequently used geometry and reduce CPU overhead:</p>
+                <pre><code>#define DL_SIZE 8192
+static u8 static_geometry_dl[DL_SIZE] ATTRIBUTE_ALIGN(32);
+
+void create_static_geometry() {
+    u32 dl_size = GX_BeginDisplayList(static_geometry_dl, DL_SIZE);
+    
+    // Record all static geometry commands
+    GX_Begin(GX_TRIANGLES, GX_VTXFMT0, vertex_count);
+    for(int i = 0; i < vertex_count; i++) {
+        GX_Position3f32(vertices[i].x, vertices[i].y, vertices[i].z);
+        GX_Normal3f32(normals[i].x, normals[i].y, normals[i].z);
+        GX_TexCoord2f32(texcoords[i].u, texcoords[i].v);
+    }
+    GX_End();
+    
+    dl_size = GX_EndDisplayList();
+    DCFlushRange(static_geometry_dl, dl_size);
+}
+
+void render_static_geometry() {
+    // Extremely fast - just replay recorded commands
+    GX_CallDisplayList(static_geometry_dl, dl_size);
+}</code></pre>
+
+                <h3>Vertex Format Optimization</h3>
+                <p>Choose the most compact vertex formats that meet your needs:</p>
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Use Case</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Position</td><td>GX_POS_XYZ</td><td>12 bytes</td><td>Standard 3D positions</td></tr>
+                        <tr><td>Position</td><td>GX_POS_XY</td><td>8 bytes</td><td>2D/UI elements</td></tr>
+                        <tr><td>Normal</td><td>GX_NRM_XYZ</td><td>12 bytes</td><td>Lighting calculations</td></tr>
+                        <tr><td>Color</td><td>GX_CLR_RGBA</td><td>4 bytes</td><td>Per-vertex colors</td></tr>
+                        <tr><td>TexCoord</td><td>GX_TEX_S</td><td>4 bytes</td><td>1D texture mapping</td></tr>
+                        <tr><td>TexCoord</td><td>GX_TEX_ST</td><td>8 bytes</td><td>Standard 2D texturing</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>Memory Performance</h2>
+                
+                <h3>Cache-Friendly Data Layout</h3>
+                <p>Structure data to minimize cache misses:</p>
+                <pre><code>// BAD: Structure of Arrays (poor cache locality)
+typedef struct {
+    float* positions_x;
+    float* positions_y;
+    float* positions_z;
+    float* normals_x;
+    float* normals_y;
+    float* normals_z;
+} VertexData_SOA;
+
+// GOOD: Array of Structures (cache-friendly)
+typedef struct {
+    float x, y, z;        // Position
+    float nx, ny, nz;     // Normal
+    float u, v;           // Texture coordinates
+} Vertex;
+
+typedef struct {
+    Vertex vertices[MAX_VERTICES];
+    int count;
+} VertexData_AOS;</code></pre>
+
+                <h3>Memory Alignment</h3>
+                <p>Ensure proper alignment for optimal memory access:</p>
+                <pre><code>// Align textures to 32-byte boundaries
+static u8 texture_data[TEXTURE_SIZE] ATTRIBUTE_ALIGN(32);
+
+// Align vertex arrays for optimal DMA
+static Vertex vertices[MAX_VERTICES] ATTRIBUTE_ALIGN(32);
+
+// Flush cache after writing vertex data
+DCFlushRange(vertices, sizeof(Vertex) * vertex_count);</code></pre>
+
+                <h2>TEV Performance</h2>
+                
+                <h3>Minimize TEV Stages</h3>
+                <p>Each active TEV stage adds processing overhead:</p>
+                <pre><code>// Use minimal stages for best performance
+GX_SetNumTevStages(1);  // Only what you need
+
+// Disable unused texture units
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR_NULL);</code></pre>
+
+                <h3>Alpha Testing Optimization</h3>
+                <p>Use alpha testing to reject pixels early:</p>
+                <pre><code>// Enable alpha testing for transparent objects
+GX_SetAlphaCompare(GX_GREATER, 128, GX_AOP_AND, GX_GREATER, 128);
+GX_SetZCompLoc(GX_FALSE); // Test alpha before Z for early rejection
+
+// Disable alpha testing for opaque objects
+GX_SetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);</code></pre>
+
+                <h2>Frame Rate Management</h2>
+                
+                <h3>Adaptive Quality Scaling</h3>
+                <p>Implement dynamic quality adjustment to maintain frame rate:</p>
+                <pre><code>typedef struct {
+    float target_frame_time;
+    float current_frame_time;
+    int quality_level;
+    int max_quality;
+} AdaptiveQuality;
+
+void update_quality(AdaptiveQuality* aq, float frame_time) {
+    aq->current_frame_time = frame_time;
+    
+    if(frame_time > aq->target_frame_time * 1.1f) {
+        // Frame time too high, reduce quality
+        if(aq->quality_level > 0) {
+            aq->quality_level--;
+        }
+    } else if(frame_time < aq->target_frame_time * 0.9f) {
+        // Frame time good, can increase quality
+        if(aq->quality_level < aq->max_quality) {
+            aq->quality_level++;
+        }
+    }
+}
+
+void render_with_quality(AdaptiveQuality* aq) {
+    switch(aq->quality_level) {
+        case 0: // Lowest quality
+            render_low_poly_models();
+            render_simple_effects();
+            break;
+        case 1: // Medium quality
+            render_medium_poly_models();
+            render_basic_effects();
+            break;
+        case 2: // High quality
+            render_high_poly_models();
+            render_advanced_effects();
+            break;
+    }
+}</code></pre>
+
+                <h2>Performance Monitoring</h2>
+                
+                <h3>Real-time Performance Display</h3>
+                <pre><code>void display_performance_stats(Profiler* prof) {
+    printf("Frame Time: %.2f ms (%.1f FPS)\n", 
+           prof->average_ms, 1000.0f / prof->average_ms);
+    
+    if(prof->average_ms > 16.67f) {
+        printf("WARNING: Frame rate below 60 FPS\n");
+    }
+    
+    // Display GPU utilization estimate
+    float gpu_utilization = (prof->average_ms / 16.67f) * 100.0f;
+    printf("Estimated GPU Load: %.1f%%\n", gpu_utilization);
+}</code></pre>
+
+                <h2>Common Performance Pitfalls</h2>
+                <ul>
+                    <li><strong>Excessive State Changes:</strong> Switching textures, materials, or render states frequently</li>
+                    <li><strong>Unaligned Memory Access:</strong> Not aligning data to cache line boundaries</li>
+                    <li><strong>Redundant Matrix Operations:</strong> Recalculating unchanged transformation matrices</li>
+                    <li><strong>Overdraw:</strong> Drawing the same pixels multiple times unnecessarily</li>
+                    <li><strong>Cache Misses:</strong> Poor data locality in vertex arrays and textures</li>
+                </ul>
+
+                <div class="info-box">
+                    <h4>Performance Checklist</h4>
+                    <ul>
+                        <li>Profile frame times regularly using the Time Base register</li>
+                        <li>Batch draw calls by texture and material</li>
+                        <li>Use display lists for static geometry</li>
+                        <li>Align memory allocations to 32-byte boundaries</li>
+                        <li>Minimize TEV stages and texture units</li>
+                        <li>Implement adaptive quality scaling for consistent frame rates</li>
+                        <li>Cache transformation matrices when possible</li>
+                        <li>Use early alpha testing for transparent objects</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="MemoryManagement.html">Memory Management</a> - Efficient memory allocation strategies</li>
+                        <li><a href="Shaders.html">TEV Shaders</a> - Optimizing TEV pipeline performance</li>
+                        <li><a href="Textures.html">Texture Management</a> - Texture optimization techniques</li>
+                        <li><a href="../gx_engine/State-Management.html">State Management</a> - Minimizing state changes</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

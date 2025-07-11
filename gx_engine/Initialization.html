@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX Engine Initialization - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; GX Engine &raquo; Initialization</nav>
+            </div>
+            <h1>GX Engine Initialization</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>Initializing the GX graphics engine is the first and most critical step in rendering graphics on the Wii. This process involves setting up the framebuffer, configuring the rendering mode, and preparing the graphics processor for drawing commands.</p>
+
+            <h2>Core Initialization Steps</h2>
+            <p>The following sequence of function calls is typically required to get the GX engine into a ready state.</p>
+
+            <h3>1. Initialize the Video System</h3>
+            <p>Before any graphics can be drawn, the video mode must be configured. This is done using the <code>VIDEO_Init()</code> function, which sets up the physical display and determines the appropriate rendering mode based on the console's region.</p>
+            <pre><code class="language-c">
+#include &lt;video.h&gt;
+
+// Initialize the video system
+VIDEO_Init();
+            </code></pre>
+
+            <h3>2. Configure the Framebuffer</h3>
+            <p>A framebuffer is a region of memory that holds the pixel data for a single frame. You need to allocate memory for it and tell GX where it is. A common practice is to allocate two framebuffers for double buffering, which prevents screen tearing.</p>
+            <pre><code class="language-c">
+#include &lt;stdlib.h&gt;
+#include &lt;gctypes.h&gt;
+
+GXRModeObj *rmode;
+void *framebuffer;
+
+// Get the preferred video mode
+rmode = VIDEO_GetPreferredMode(NULL);
+
+// Allocate memory for the framebuffer
+framebuffer = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+
+// Configure the video interface
+VIDEO_Configure(rmode);
+
+// Set the framebuffer for the VI to draw to the screen
+VIDEO_SetNextFramebuffer(framebuffer);
+
+// Make the VI visible
+VIDEO_SetBlack(FALSE);
+VIDEO_Flush();
+VIDEO_WaitVSync();
+if(rmode->viTVMode & VI_NON_INTERLACE) VIDEO_WaitVSync();
+            </code></pre>
+            <p>The call to <code>SYS_AllocateFramebuffer</code> reserves a 32-byte aligned memory block suitable for the GX framebuffer. <code>MEM_K0_TO_K1</code> converts the address to a non-cached memory region, which is essential for direct GPU access.</p>
+
+            <h3>3. Initialize the GX Engine</h3>
+            <p>With the video system and framebuffer ready, you can initialize the GX engine itself. This involves setting up a FIFO buffer for graphics commands and configuring initial states.</p>
+            <pre><code class="language-c">
+#include &lt;gx.h&gt;
+
+#define DEFAULT_FIFO_SIZE (256 * 1024)
+
+void *gp_fifo = NULL;
+
+// Allocate the command buffer
+gp_fifo = memalign(32, DEFAULT_FIFO_SIZE);
+memset(gp_fifo, 0, DEFAULT_FIFO_SIZE);
+
+// Initialize the GX engine
+GX_Init(gp_fifo, DEFAULT_FIFO_SIZE);
+            </code></pre>
+            <p>The FIFO (First-In, First-Out) buffer is where the CPU writes all the drawing commands that the GPU will execute. It must be aligned to a 32-byte boundary.</p>
+
+            <h3>4. Set Initial GX Parameters</h3>
+            <p>After <code>GX_Init</code>, you must configure the fundamental rendering parameters, such as the framebuffer format, Z-buffer format, and viewport.</p>
+            <pre><code class="language-c">
+// Set framebuffer copy parameters
+GX_SetCopyClear((GXColor){0, 0, 0, 255}, 0x00ffffff);
+
+// Set viewport
+GX_SetViewport(0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
+
+// Set scissor box
+GX_SetScissor(0, 0, rmode->fbWidth, rmode->efbHeight);
+
+// Set display copy dimensions
+GX_SetDispCopyYScale((f32)rmode->xfbHeight / (f32)rmode->efbHeight);
+GX_SetDispCopySrc(0, 0, rmode->fbWidth, rmode->efbHeight);
+GX_SetDispCopyDst(rmode->fbWidth, rmode->xfbHeight);
+GX_SetDispCopyGamma(GX_GM_1_0);
+
+// Tell GX to use the framebuffer we configured
+GX_CopyDisp(framebuffer, GX_TRUE);
+GX_SetDrawDone();
+            </code></pre>
+            <p>These settings ensure that the rendered image (the EFB, or Embedded Framebuffer) is correctly copied to the external framebuffer (XFB) that the Video Interface (VI) displays on the screen.</p>
+
+            <h2>Summary of Initialization Functions</h2>
+            <div class="function-list">
+                <div class="function-item">
+                    <strong>VIDEO_Init()</strong>
+                    <p>Initializes the video hardware and subsystem.</p>
+                </div>
+                <div class="function-item">
+                    <strong>VIDEO_GetPreferredMode(GXRModeObj *mode)</strong>
+                    <p>Retrieves the optimal video mode for the console.</p>
+                </div>
+                <div class="function-item">
+                    <strong>SYS_AllocateFramebuffer(GXRModeObj *mode)</strong>
+                    <p>Allocates a memory region suitable for a framebuffer.</p>
+                </div>
+                <div class="function-item">
+                    <strong>VIDEO_Configure(GXRModeObj *mode)</strong>
+                    <p>Configures the VI for the specified video mode.</p>
+                </div>
+                <div class="function-item">
+                    <strong>VIDEO_SetNextFramebuffer(void *fb)</strong>
+                    <p>Specifies which framebuffer the VI should display next.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_Init(void *fifo_base, u32 fifo_size)</strong>
+                    <p>Initializes the GX graphics processor and its command FIFO.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_SetViewport(f32 x, f32 y, f32 w, f32 h, f32 nearZ, f32 farZ)</strong>
+                    <p>Defines the area of the screen where the scene will be rendered.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_CopyDisp(void *dest, u8 clear)</strong>
+                    <p>Copies the EFB to the XFB, making the rendered image visible.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>

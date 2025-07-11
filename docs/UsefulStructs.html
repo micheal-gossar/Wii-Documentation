@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Useful Structs - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item active">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; Useful C Structs</nav>
+            </div>
+            <h1>Useful C Structs</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>
+                This section provides a reference for the most common C structs you will use when working with `libogc` for graphics and input.
+            </p>
+
+            <hr>
+
+            <h2>GXRModeObj</h2>
+            <p>
+                This struct holds all information about a video mode, such as screen resolution. It is essential for initializing the display. You get this struct from `VIDEO_GetPreferredMode()`.
+            </p>
+            <pre><code class="c">
+typedef struct _GXRModeObj {
+    u32 viTVMode;
+    u16 fbWidth;         // Framebuffer width in pixels
+    u16 efbHeight;       // Embedded Framebuffer height
+    u16 xfbHeight;       // External Framebuffer height
+    u16 viXOrigin;
+    u16 viYOrigin;
+    u16 viWidth;
+    u16 viHeight;
+    u32 xfbMode;
+    u8  field_rendering;
+    u8  aa;              // Anti-aliasing enabled
+    u8  sample_pattern[12][2];
+    u8  vfilter[7];
+} GXRModeObj;
+            </code></pre>
+
+            <hr>
+
+            <h2>guVector</h2>
+            <p>
+                The standard 3-component float vector, used for positions, normals, directions, etc.
+            </p>
+            <pre><code class="c">
+typedef struct _guVector {
+    f32 x, y, z;
+} guVector;
+            </code></pre>
+
+            <hr>
+
+            <h2>Mtx / Mtx44</h2>
+            <p>
+                These are the matrix types used by `libgu` and `libogc`. `Mtx` is a 3x4 float matrix, which is the format GX uses for modelview matrices. `Mtx44` is a 4x4 float matrix, used for projection matrices.
+            </p>
+            <pre><code class="c">
+typedef f32 Mtx[3][4];    // A 3x4 matrix of floats
+typedef f32 Mtx44[4][4];  // A 4x4 matrix of floats
+            </code></pre>
+
+            <hr>
+
+            <h2>GXColor</h2>
+            <p>
+                Represents a color with four 8-bit components: Red, Green, Blue, and Alpha. This is the standard color format for most GX functions.
+            </p>
+            <pre><code class="c">
+typedef struct _GXColor {
+    u8 r, g, b, a;
+} GXColor;
+            </code></pre>
+
+            <hr>
+
+            <h2>GXTexObj</h2>
+            <p>
+                A texture object that holds information about a texture, like its dimensions, data format, and filtering settings. You must initialize this struct before using a texture.
+            </p>
+            <pre><code class="c">
+// The contents of this struct are internal to GX.
+// You only ever interact with it via a pointer.
+typedef struct _GXTexObj {
+    u32 val[8];
+} GXTexObj;
+            </code></pre>
+            <h3>Usage:</h3>
+            <pre><code class="c">
+#include &lt;ogc/gx.h&gt;
+
+// 1. Declare a texture object
+GXTexObj myTexObj;
+
+// 2. Initialize it with your texture data
+GX_InitTexObj(&myTexObj, texture_data_ptr, width, height, format, ...);
+
+// 3. Load it into a texture map slot for the GPU to use
+GX_LoadTexObj(&myTexObj, GX_TEXMAP0);
+            </code></pre>
+
+            <hr>
+
+            <h2>WPADData</h2>
+            <p>
+                The primary struct for getting input from a Wiimote and its extensions. It contains button states, accelerometer data, IR pointer data, and information about any connected expansion controllers.
+            </p>
+            <pre><code class="c">
+typedef struct _wpad_data {
+    s16 err;
+    u16 btns_dwn;
+    u16 btns_up;
+    u16 btns_held;
+    ir_t ir;
+    vec3w_t accel;
+    orient_t orient;
+    gforce_t gforce;
+    expansion_t exp; // Union for Nunchuk, Classic Controller, etc.
+} WPADData;
+            </code></pre>
+            <h3>Usage:</h3>
+            <pre><code class="c">
+#include &lt;wpad.h&gt;
+
+// Get the latest data for the first Wiimote (channel 0)
+WPAD_ScanPads();
+WPADData *data = WPAD_Data(0);
+
+// Check if the 'A' button was just pressed
+if (data->btns_dwn & WPAD_BUTTON_A) {
+    // Do something
+}
+
+// Check for Nunchuk and read its analog stick
+if (data->exp.type == WPAD_EXP_NUNCHUK) {
+    float stick_x = data->exp.nunchuk.js.pos.x;
+    float stick_y = data->exp.nunchuk.js.pos.y;
+}
+            </code></pre>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

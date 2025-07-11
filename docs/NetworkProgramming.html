@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Programming - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+        <a href="Miis.html" class="nav-item">Mii Integration</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Network Programming</h1>
+      <p class="intro">The Wii's networking capabilities are managed by <code>libwiisocket</code>, a library based on the standard Berkeley (BSD) sockets API. This allows for creating TCP and UDP clients and servers, enabling online multiplayer, content downloads, and more.</p>
+
+      <section id="initialization">
+        <h2>Initialization and Status</h2>
+        <p>Before any network operations can be performed, the network stack must be initialized with <code>net_init()</code>. It's crucial to check the return status and periodically check the network status until an IP address is obtained.</p>
+        <pre><code class="language-cpp">#include &lt;network.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt; // For usleep
+
+s32 initialize_network() {
+    printf("Initializing network...\n");
+    s32 result;
+    while ((result = net_init()) == -EAGAIN) {
+        usleep(100 * 1000); // Wait 100ms
+    }
+
+    if (result < 0) {
+        printf("Network initialization failed with error %d.\n", result);
+        return result;
+    }
+
+    char local_ip[16] = {0};
+    if (if_config(local_ip, NULL, NULL, true) < 0) {
+        printf("Failed to get local IP address.\n");
+        return -1;
+    }
+
+    printf("Network initialized. Local IP: %s\n", local_ip);
+    return 0;
+}
+</code></pre>
+      </section>
+
+      <section id="tcp-client">
+        <h2>TCP Client Example (HTTP GET)</h2>
+        <p>This example demonstrates how to create a simple TCP client to perform an HTTP GET request. It connects to a web server, sends a request, and prints the response.</p>
+        <pre><code class="language-cpp">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;netinet/in.h&gt;
+#include &lt;arpa/inet.h&gt;
+#include &lt;netdb.h&gt;
+
+void http_get_example(const char* host, const char* path) {
+    // Resolve hostname to IP address
+    struct hostent* server = gethostbyname(host);
+    if (server == NULL) {
+        printf("Failed to resolve host: %s\n", host);
+        return;
+    }
+
+    // Create socket
+    s32 sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        printf("Failed to create socket.\n");
+        return;
+    }
+
+    // Setup server address
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(80); // HTTP port
+    memcpy(&server_addr.sin_addr, server->h_addr_list[0], server->h_length);
+
+    // Connect to server
+    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        printf("Failed to connect to server.\n");
+        close(sock);
+        return;
+    }
+
+    // Build and send HTTP GET request
+    char request[1024];
+    sprintf(request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", path, host);
+    
+    if (send(sock, request, strlen(request), 0) < 0) {
+        printf("Failed to send request.\n");
+        close(sock);
+        return;
+    }
+
+    // Receive and print response
+    char buffer[512];
+    s32 bytes_received;
+    printf("--- RESPONSE ---\n");
+    while ((bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0)) > 0) {
+        buffer[bytes_received] = '\0'; // Null-terminate
+        printf("%s", buffer);
+    }
+    printf("\n--- END RESPONSE ---\n");
+
+    // Clean up
+    close(sock);
+}
+
+// Usage:
+// http_get_example("example.com", "/");
+</code></pre>
+      </section>
+
+      <section id="udp-example">
+        <h2>UDP Socket Example</h2>
+        <p>UDP is a connectionless protocol ideal for low-latency applications like online gaming, where speed is more important than guaranteed delivery. This example shows how to bind a UDP socket, send a packet, and receive a response.</p>
+        <pre><code class="language-cpp">void udp_example(const char* server_ip, u16 port) {
+    s32 sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        printf("Failed to create UDP socket.\n");
+        return;
+    }
+
+    // Server address
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    inet_pton(AF_INET, server_ip, &server_addr.sin_addr);
+
+    // Send a message
+    const char* message = "Hello from Wii!";
+    if (sendto(sock, message, strlen(message), 0, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        printf("Failed to send UDP packet.\n");
+        close(sock);
+        return;
+    }
+    printf("Sent UDP packet.\n");
+
+    // Receive a response (optional)
+    char buffer[512];
+    struct sockaddr_in from_addr;
+    socklen_t from_len = sizeof(from_addr);
+    s32 bytes_received = recvfrom(sock, buffer, sizeof(buffer) - 1, 0, (struct sockaddr*)&from_addr, &from_len);
+
+    if (bytes_received > 0) {
+        buffer[bytes_received] = '\0';
+        printf("Received response: '%s'\n", buffer);
+    }
+
+    close(sock);
+}
+</code></pre>
+      </section>
+
+      <section id="function-reference">
+        <h2>Core Function Reference</h2>
+        <dl>
+          <dt><code>s32 net_init(void)</code></dt>
+          <dd>Initializes the network stack. Returns 0 on success, or a negative error code.</dd>
+          <dt><code>s32 if_config(char *ip, char *netmask, char *gateway, bool use_dhcp)</code></dt>
+          <dd>Configures the network interface and obtains an IP address.</dd>
+          <dt><code>s32 socket(int domain, int type, int protocol)</code></dt>
+          <dd>Creates a new socket. (e.g., <code>socket(AF_INET, SOCK_STREAM, 0)</code> for TCP).</dd>
+          <dt><code>s32 connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)</code></dt>
+          <dd>Establishes a connection on a socket.</dd>
+          <dt><code>s32 send(int sockfd, const void *buf, size_t len, int flags)</code></dt>
+          <dd>Sends data over a connected TCP socket.</dd>
+          <dt><code>s32 recv(int sockfd, void *buf, size_t len, int flags)</code></dt>
+          <dd>Receives data from a connected TCP socket.</dd>
+          <dt><code>s32 sendto(..., const struct sockaddr *dest_addr, ...)</code></dt>
+          <dd>Sends data over a connectionless UDP socket to a specific destination.</dd>
+          <dt><code>s32 recvfrom(..., struct sockaddr *src_addr, ...)</code></dt>
+          <dd>Receives data from a connectionless UDP socket, capturing the sender's address.</dd>
+          <dt><code>s32 close(int sockfd)</code></dt>
+          <dd>Closes a socket descriptor.</dd>
+        </dl>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>State Management - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item active">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; State Management</nav>
+            </div>
+            <h1>Render State Management</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>
+                The GPU is a "state machine". Its behavior at any given moment is determined by a large set of configuration options called the "render state". To draw different objects with different effects (e.g., some are solid, some are transparent), you must change this state.
+            </p>
+            <p>
+                Effective state management is crucial for both correctness and performance.
+            </p>
+
+            <h2>Key Render States</h2>
+            <p>While there are many settings, a few key functions control the most common rendering behaviors.</p>
+            <ul>
+                <li><strong>`GX_SetBlendMode()`</strong>: Controls how the color of a new pixel (the "source") is combined with the pixel already in the framebuffer (the "destination"). This is the key to transparency.</li>
+                <li><strong>`GX_SetZMode()`</strong>: Configures the Z-buffer (or depth buffer). It lets you enable or disable depth testing (which determines if a new pixel is behind or in front of what's already there) and whether to write new depth values to the buffer.</li>
+                <li><strong>`GX_SetCullMode()`</strong>: Tells the GPU not to render certain faces of a triangle. `GX_CULL_BACK` is a standard optimization that prevents the GPU from drawing the back-facing (interior) sides of a solid object.</li>
+                <li><strong>`GX_SetAlphaCompare()`</strong>: Allows the GPU to discard a pixel based on its alpha value before it even gets to the blending stage. This is perfect for "cutout" effects like leaves or chain-link fences where you want fully transparent pixels to be drawn instantly.</li>
+            </ul>
+
+            <h2>Example: Setting up for Transparency</h2>
+            <p>
+                To render a translucent object correctly, you need to configure the blend mode and the Z-mode appropriately.
+            </p>
+            <pre><code class="c">
+#include &lt;ogc/gx.h&gt;
+
+void setup_for_transparent_object() {
+    // Set a blend mode for standard alpha blending.
+    // The final color will be: (SourceColor * SourceAlpha) + (DestinationColor * (1 - SourceAlpha))
+    GX_SetBlendMode(
+        GX_BM_BLEND,      // Enable blending
+        GX_BL_SRCALPHA,   // Source factor: use the source pixel's alpha value
+        GX_BL_INVSRCALPHA,// Destination factor: use one minus the source pixel's alpha
+        GX_LO_NOOP        // Logical operation: disabled
+    );
+
+    // Configure the Z-Mode (depth buffer).
+    GX_SetZMode(
+        GX_TRUE,      // Enable depth testing (check if we are in front of other objects)
+        GX_LEQUAL,    // The depth test passes if the new pixel is closer or at the same depth
+        GX_FALSE      // IMPORTANT: Disable writing new depth values to the buffer
+    );
+}
+            </code></pre>
+            <p>
+                <strong>Why disable Z-write?</strong> If a transparent object writes its depth value, another transparent object behind it might fail the depth test and not be drawn, even though it should be visible through the first object.
+            </p>
+            <p>
+                <strong>Rendering Order is Crucial:</strong> For transparency to work correctly, you must draw all your opaque (solid) objects first. Then, you must draw your transparent objects sorted from farthest away to closest to the camera.
+            </p>
+
+            <h2>The Cost of State Changes</h2>
+            <p>
+                Every time you call a `GX_Set...` function, the CPU sends a command to the GPU, which may cause a small pipeline stall. If you change states thousands of times per frame, this can add up and hurt performance.
+            </p>
+            <p>
+                A key optimization strategy is to group your draw calls by state. For example:
+            </p>
+            <ol>
+                <li>Set state for opaque objects.</li>
+                <li>Draw ALL opaque objects.</li>
+                <li>Set state for transparent objects.</li>
+                <li>Draw ALL transparent objects.</li>
+                <li>Set state for additively blended objects (e.g., fire).</li>
+                <li>Draw ALL additive objects.</li>
+            </ol>
+            <p>This minimizes the number of state changes per frame and is a fundamental concept in real-time graphics.</p>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

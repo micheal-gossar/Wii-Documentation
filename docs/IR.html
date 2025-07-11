@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IR Pointer - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Wii IR Pointer</h1>
+      <p class="intro">The Wiimote's Infrared (IR) pointer is one of its most defining features, allowing for precise on-screen aiming. This is achieved via a small IR camera in the front of the Wiimote that detects the IR LEDs in the Sensor Bar.</p>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>The Sensor Bar contains two clusters of IR LEDs, one at each end. The Wiimote's camera sees these as two bright dots. By analyzing the position, separation, and angle of these dots, the Wii can calculate the Wiimote's position, distance from the screen, and rotation relative to the sensor bar. This data is then translated into an on-screen cursor.</p>
+      </section>
+
+      <section id="initialization">
+        <h2>Initialization</h2>
+        <p>To use the IR pointer, you must explicitly enable it for each Wiimote. This is done by setting the data report mode after initializing WPAD.</p>
+        <p>The most common setup involves two steps:</p>
+        <ol>
+          <li><strong>Set the data format:</strong> You must tell the Wiimote to include IR data in its reports. This is done with <code>WPAD_SetDataFormat()</code>. To get IR and accelerometer data, use <code>WPAD_FMT_BTNS_ACC_IR</code>.</li>
+          <li><strong>Set the virtual resolution:</strong> To map the IR coordinates to your screen, you must provide WPAD with your screen's resolution using <code>WPAD_SetVRes()</code>. This allows the library to automatically scale the raw sensor coordinates to your display area.</li>
+        </ol>
+        <pre><code class="language-cpp">// In your initialization code, after WPAD_Init()
+// For Wiimote channel 0 (the first player)
+WPAD_SetDataFormat(WPAD_CHAN_0, WPAD_FMT_BTNS_ACC_IR);
+
+// Get the current video mode to set the resolution dynamically
+GXRModeObj* video_mode = VIDEO_GetPreferredMode(NULL);
+
+// Set the virtual resolution for the pointer
+WPAD_SetVRes(WPAD_CHAN_0, video_mode->fbWidth, video_mode->xfbHeight);
+</code></pre>
+      </section>
+
+      <section id="reading-data">
+        <h2>Reading IR Data</h2>
+        <p>Once initialized, IR data is delivered as part of the standard <code>WPADData</code> structure. The relevant member is the <code>ir_t ir</code> struct.</p>
+        <p>The <code>ir_t</code> struct contains the following key fields:</p>
+        <ul>
+          <li><code>bool valid</code>: Is <code>true</code> if the pointer is on-screen and tracking correctly. <strong>Always check this first!</strong></li>
+          <li><code>f32 x, y</code>: The screen-space coordinates of the pointer, scaled to the virtual resolution you set with <code>WPAD_SetVRes()</code>.</li>
+          <li><code>f32 raw_x, raw_y</code>: The unscaled, raw coordinates from the sensor. The range is approximately 0-1023 for X and 0-767 for Y.</li>
+          <li><code>f32 angle</code>: The roll angle of the Wiimote in degrees, calculated from the vector between the two IR dots.</li>
+          <li><code>s32 smooth_x, smooth_y</code>: Internally smoothed versions of the screen-space coordinates. These can provide a more stable pointer position than using <code>x</code> and <code>y</code> directly.</li>
+        </ul>
+      </section>
+
+      <section id="code-example">
+        <h2>Code Example</h2>
+        <p>This example initializes the IR pointer, sets the virtual resolution, and continuously reads the pointer data to log its position and state. It also shows how to handle the pointer being off-screen.</p>
+        <pre><code class="language-cpp">void CheckIRPointer() {
+    WPADData* wpad_data = WPAD_Data(WPAD_CHAN_0);
+
+    if (wpad_data->ir.valid) {
+        // The pointer is visible and tracking.
+        // Using the smoothed coordinates is often better for cursors.
+        float pointer_x = wpad_data->ir.smooth_x;
+        float pointer_y = wpad_data->ir.smooth_y;
+
+        // Here you would typically draw a cursor image at (pointer_x, pointer_y)
+
+    } else {
+        // The pointer is not visible (off-screen or obscured).
+        // You should hide your cursor or indicate that the pointer is lost.
+    }
+}
+
+// In your main loop:
+// WPAD_ScanPads();
+// CheckIRPointer();
+</code></pre>
+      </section>
+
+      <section id="function-reference">
+        <h2>Function Reference</h2>
+        <dl>
+          <dt><code>s32 WPAD_SetDataFormat(s32 chan, s32 format)</code></dt>
+          <dd>
+            <p>Sets the data reporting mode for a given Wiimote channel. To use the IR pointer, you must use a format that includes IR data, such as <code>WPAD_FMT_BTNS_ACC_IR</code>.</p>
+          </dd>
+          <dt><code>void WPAD_SetVRes(s32 chan, u32 width, u32 height)</code></dt>
+          <dd>
+            <p>Sets the "virtual resolution" for the IR pointer on a specific channel. This tells libogc how to scale the raw sensor coordinates into screen-space coordinates.</p>
+          </dd>
+        </dl>
+      </section>
+
+      <section id="best-practices">
+        <h2>Best Practices</h2>
+        <ul>
+          <li><strong>Always Check <code>ir.valid</code>:</strong> Never use the coordinate data without first checking if <code>ir.valid</code> is true.</li>
+          <li><strong>Use Smoothed Coordinates:</strong> The raw IR data can be jittery. For smoother cursor movement, prefer using <code>ir.smooth_x</code> and <code>ir.smooth_y</code>.</li>
+          <li><strong>Cursor Clamping:</strong> It's good practice to clamp the coordinates to the screen boundaries to prevent your cursor from partially disappearing.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

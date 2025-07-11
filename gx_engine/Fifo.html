@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX Command FIFO - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>GX Command FIFO</h1>
+            <p>The GX Command Processor (CP) FIFO is a buffer in main memory that the CPU uses to send commands to the graphics processor. Understanding how to use the FIFO is fundamental to rendering anything with GX, as all state changes and drawing operations must pass through it.</p>
+
+            <h2>FIFO Architecture</h2>
+            <p>The FIFO operates as a ring buffer. The CPU writes commands into it, and the GPU reads and executes them asynchronously. This architecture allows the CPU to prepare rendering commands for future frames while the GPU is busy drawing the current one, which is a key technique for achieving high performance.</p>
+            <p>There are two main ways to write to the FIFO:</p>
+            <ul>
+                <li><strong>Immediate Mode:</strong> The CPU sends one command at a time and waits for the GPU to process it. This is simple but slow, and generally only used for initialization or state changes that must be synchronized.</li>
+                <li><strong>Display List Mode:</strong> The CPU writes a batch of commands into a buffer (a "display list") in memory. It then tells the GPU to execute that list. This is far more efficient and is the standard method for rendering scenes.</li>
+            </ul>
+
+            <h2>Writing to the FIFO</h2>
+            <p>All GX functions that start with <code>GX_</code> (e.g., <code>GX_Begin</code>, <code>GX_SetVtxDesc</code>, <code>GX_SetTevOp</code>) write their corresponding commands into the FIFO buffer. These commands are small, typically 1 to 9 bytes each.</p>
+            <p>For example, when you call <code>GX_Begin(GX_QUADS, GX_VTXFMT0, 4)</code>, you are not directly manipulating GPU hardware. Instead, you are writing a command to the FIFO that tells the GPU to start drawing a four-vertex quad using vertex format 0.</p>
+
+            <h3>Example: Sending a Single Triangle</h3>
+            <p>In this example, we use immediate mode to send vertex data directly. Each call to <code>GX_Position3f32</code> writes a position to the FIFO. The final <code>GX_End()</code> command signals that the primitive is complete.</p>
+            <pre><code class="language-c">
+#include &lt;gx.h&gt;
+
+// Begin drawing a triangle
+GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
+
+    // Send vertex 1 position
+    GX_Position3f32(-1.0f, -1.0f, 0.0f);
+    // Send vertex 1 color
+    GX_Color4u8(255, 0, 0, 255);
+
+    // Send vertex 2 position
+    GX_Position3f32(1.0f, -1.0f, 0.0f);
+    // Send vertex 2 color
+    GX_Color4u8(0, 255, 0, 255);
+
+    // Send vertex 3 position
+    GX_Position3f32(0.0f, 1.0f, 0.0f);
+    // Send vertex 3 color
+    GX_Color4u8(0, 0, 255, 255);
+
+// End of primitive
+GX_End();
+            </code></pre>
+
+            <h2>FIFO Management</h2>
+            <p>While libogc handles much of the low-level FIFO management, it's important to know about a few key functions.</p>
+            <div class="function-list">
+                <div class="function-item">
+                    <strong>GX_Init(void *fifo_base, u32 fifo_size)</strong>
+                    <p>Initializes the GX engine and provides it with a memory block to use as the command FIFO.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_Flush()</strong>
+                    <p>Forces the CPU to send any cached FIFO commands to the GPU. This ensures the GPU sees all commands written up to this point.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_SetDrawDone()</strong>
+                    <p>Inserts a "draw done" token into the FIFO. This is used to signal the end of a frame. You can wait for this token to be processed to synchronize the CPU and GPU.</p>
+                </div>
+                 <div class="function-item">
+                    <strong>GX_WaitDrawDone()</strong>
+                    <p>Stalls the CPU until the GPU has processed a "draw done" token. This is how you ensure one frame has finished rendering before starting the next.</p>
+                </div>
+            </div>
+
+            <h2>Display Lists</h2>
+            <p>For performance-critical code, you should use display lists. A display list is simply a region of memory where you write all your FIFO commands for a model or scene. You can then "call" this list to have the GPU execute it.</p>
+            <pre><code class="language-c">
+// Allocate memory for a display list (must be 32-byte aligned)
+void *myDisplayList = memalign(32, 1024);
+u32 listSize;
+
+// Start recording commands into the display list
+GX_BeginDispList(myDisplayList, 1024);
+
+    // ... All your GX_Begin, GX_Position, GX_End, etc. calls ...
+    GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
+        GX_Position3f32(-0.5f, -0.5f, 0.0f);
+        GX_Position3f32(0.5f, -0.5f, 0.0f);
+        GX_Position3f32(0.0f, 0.5f, 0.0f);
+    GX_End();
+
+// Stop recording and get the size of the list
+listSize = GX_EndDispList();
+
+// Later, in your main render loop, you can execute this list
+GX_CallDispList(myDisplayList, listSize);
+            </code></pre>
+            <p>Using display lists reduces CPU overhead, as you are no longer calling many individual functions in your main loop. Instead, you are telling the GPU to process a pre-built block of commands directly from memory.</p>
+
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>

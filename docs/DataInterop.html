@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Interop - GX Reality Engine Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+        <h1>C/C++ Interoperability</h1>
+        <p class="intro">libogc is primarily a C library, but most modern Wii homebrew uses C++. This guide covers best practices for mixing C and C++ code, managing the differences between the languages, and creating efficient data exchange layers.</p>
+  
+        <section id="language-mixing">
+          <h2>Mixing C and C++ Code</h2>
+          <p>When you compile C++ code, the compiler changes the names of functions (a process called "name mangling") to support features like function overloading. The C compiler does not do this. To call a C function from C++, you must tell the C++ compiler not to mangle the name, so it can find the original C function.</p>
+          
+          <h3>Using <code>extern "C"</code></h3>
+          <p>The <code>extern "C"</code> linkage specifier is used in C++ to declare that a function or a block of code should be treated with C linkage. This is the cornerstone of C/C++ interoperability.</p>
+          <pre><code class="language-cpp">// In a C++ file (.cpp)
+
+// You can include C headers directly if they are wrapped correctly.
+// Most libogc headers are.
+#include &lt;gccore.h&gt;
+#include &lt;wiiuse/wpad.h&gt;
+
+// If you need to declare a C function yourself:
+extern "C" {
+  void some_c_function(int param);
+}
+
+void my_cpp_function() {
+    // Now you can call libogc C functions directly
+    VIDEO_Init();
+    WPAD_Init();
+
+    // And your own declared C functions
+    some_c_function(123);
+}
+</code></pre>
+          <p>When creating a header file that should be usable by both C and C++ source files, you can use the <code>__cplusplus</code> macro.</p>
+          <pre><code class="language-cpp">// my_c_library.h
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// All declarations in here have C linkage
+void c_function_one();
+int c_function_two(char* data);
+
+#ifdef __cplusplus
+}
+#endif
+</code></pre>
+        </section>
+  
+        <section id="data-conversion">
+          <h2>Data Type Conversion</h2>
+          <p>C and C++ share basic data types (<code>int</code>, <code>float</code>, <code>char*</code>), but C++ introduces complex types like classes, strings, and vectors. When passing data between the two, you often need to convert them.</p>
+          
+          <h3>Strings</h3>
+          <p>C functions expect null-terminated character arrays (<code>char*</code>). C++ uses the <code>std::string</code> class. To pass a C++ string to a C function, use the <code>.c_str()</code> method.</p>
+          <pre><code class="language-cpp">#include &lt;string&gt;
+#include &lt;stdio.h&gt; // For printf
+
+void print_string(const std::string& my_string) {
+    // printf is a C function, it needs a const char*
+    printf("My string is: %s\n", my_string.c_str());
+}
+</code></pre>
+
+          <h3>Arrays and Vectors</h3>
+          <p>C functions work with pointers to the start of an array and a count of elements. C++'s <code>std::vector</code> can provide this information using the <code>.data()</code> method and <code>.size()</code>.</p>
+          <pre><code class="language-cpp">#include &lt;vector&gt;
+
+// A C function that processes an array of integers
+extern "C" void process_c_array(int* data, int count);
+
+void process_vector(const std::vector&lt;int&gt;& my_vector) {
+    // .data() returns a pointer to the underlying array
+    // Note: The vector must not be empty.
+    if (!my_vector.empty()) {
+        process_c_array(my_vector.data(), my_vector.size());
+    }
+}
+</code></pre>
+        </section>
+  
+        <section id="memory-management-interop">
+          <h2>Memory Management Interop</h2>
+          <p>A common source of bugs is mismatched memory management. Memory allocated with C's <code>malloc</code> must be freed with <code>free</code>. Memory allocated with C++'s <code>new</code> must be freed with <code>delete</code> (or <code>delete[]</code> for arrays).</p>
+          <p>When a C library allocates memory and returns a pointer to you, it is your responsibility to find out which function the library expects you to call to free that memory.</p>
+          <p>For libogc, memory for things like framebuffers is often allocated with <code>memalign</code> (a C function for aligned allocation) and should be freed with <code>free</code>.</p>
+          <pre><code class="language-cpp">#include &lt;malloc.h&gt; // For memalign and free
+
+void* my_framebuffer = NULL;
+
+void allocate_buffer() {
+    // Allocate 32-byte aligned memory for a framebuffer
+    my_framebuffer = memalign(32, 1024 * 1024);
+}
+
+void free_buffer() {
+    if (my_framebuffer != NULL) {
+        // Free memory allocated with memalign using free()
+        free(my_framebuffer);
+        my_framebuffer = NULL;
+    }
+}
+</code></pre>
+          <p><strong>Rule of Thumb:</strong> The code that allocates the memory should be responsible for freeing it. Avoid freeing memory in C++ that was allocated in C, and vice-versa, unless you are certain the allocators are compatible (which they usually are not for <code>new/free</code> or <code>malloc/delete</code>).</p>
+        </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX Matrix Operations - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>GX Matrix Operations</h1>
+            <p>In 3D graphics, matrices are used to perform transformations like translation, rotation, and scaling on vertices. The GX engine has a powerful and flexible matrix pipeline that is essential for creating a 3D scene.</p>
+
+            <h2>Types of Matrices in GX</h2>
+            <p>GX primarily uses three types of matrices in its transformation pipeline:</p>
+            <ul>
+                <li><strong>Position/Normal Matrices:</strong> Used to transform vertex positions and normals from model space to world/view space. There are 10 of these available.</li>
+                <li><strong>Projection Matrix:</strong> Used to transform vertices from view space to clip space, defining the camera's field of view, aspect ratio, and near/far clipping planes.</li>
+                <li><strong>Texture Matrices:</strong> Used to transform texture coordinates, allowing for effects like scrolling textures, texture animation, and projective texturing. There are 8 of these available.</li>
+            </ul>
+
+            <h2>The Transformation Pipeline</h2>
+            <p>When a vertex is sent down the FIFO, its position is multiplied by a position matrix, and its normal (if present) is multiplied by a normal matrix. The result is then multiplied by the projection matrix to get the final screen position.</p>
+            <p><code>Vertex Position -> Position Matrix -> Projection Matrix -> Final Position</code></p>
+
+            <h2>Loading Matrices</h2>
+            <p>To use a matrix, you must first load it into one of the GX engine's internal matrix slots. The most common matrix to work with is the <strong>Modelview Matrix</strong>, which combines the transformations of the 3D model (model space) and the camera (view space).</p>
+
+            <h3>1. The Projection Matrix</h3>
+            <p>You typically set the projection matrix once per frame. You can use utility functions to create a standard perspective projection.</p>
+            <pre><code class="language-c">
+#include &lt;ogc/gu.h&gt; // Utility library for matrix operations
+
+Mtx44 projectionMatrix;
+f32 fov = 45.0f;
+f32 aspectRatio = (f32)rmode->fbWidth / (f32)rmode->efbHeight;
+f32 nearPlane = 0.1f;
+f32 farPlane = 500.0f;
+
+// Create a perspective projection matrix
+guPerspective(projectionMatrix, fov, aspectRatio, nearPlane, farPlane);
+
+// Load it into the GX projection matrix slot
+GX_LoadProjectionMtx(projectionMatrix, GX_PERSPECTIVE);
+            </code></pre>
+
+            <h3>2. The Modelview Matrix</h3>
+            <p>The modelview matrix defines the position, rotation, and scale of an object in your scene relative to the camera. You load this into one of the position/normal matrix slots.</p>
+            <pre><code class="language-c">
+Mtx modelViewMatrix; // Mtx is a 3x4 matrix, suitable for modelview
+
+// Create an identity matrix (no transformation)
+guMtxIdentity(modelViewMatrix);
+
+// Translate the matrix to move the object
+guMtxTransApply(modelViewMatrix, modelViewMatrix, 0.0f, 0.0f, -5.0f); // Move 5 units away from camera
+
+// Load it into position matrix slot 0 (GX_PNMTX0)
+GX_LoadPosMtxImm(modelViewMatrix, GX_PNMTX0);
+            </code></pre>
+            <p>The <code>Imm</code> in <code>GX_LoadPosMtxImm</code> means the matrix data is sent to the GPU immediately through the FIFO. For performance, you can also load matrices from an array using an index.</p>
+
+            <h3>3. Associating a Matrix with Vertices</h3>
+            <p>After loading a matrix, you need to tell GX to use it. This is done by associating a matrix slot (like <code>GX_PNMTX0</code>) with the vertices you are about to draw. This is done by writing to the "matrix index" register in the CP.</p>
+            <pre><code class="language-c">
+// Tell GX to use the matrix we loaded into GX_PNMTX0 for subsequent vertices
+GX_SetCurrentMtx(GX_PNMTX0);
+
+// Now, any vertices sent will be transformed by modelViewMatrix
+GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
+    // ... send vertices ...
+GX_End();
+            </code></pre>
+
+            <h2>Key Matrix Functions</h2>
+            <div class="function-list">
+                <div class="function-item">
+                    <strong>guPerspective(Mtx44 proj, f32 fov, f32 aspect, f32 n, f32 f)</strong>
+                    <p>Creates a standard 4x4 perspective projection matrix.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_LoadProjectionMtx(Mtx44 proj, u8 type)</strong>
+                    <p>Loads a 4x4 matrix into the projection matrix slot.</p>
+                </div>
+                <div class="function-item">
+                    <strong>guMtxIdentity(Mtx mt)</strong>
+                    <p>Resets a 3x4 matrix to the identity matrix (no transformation).</p>
+                </div>
+                <div class="function-item">
+                    <strong>guMtxTransApply(Mtx src, Mtx dest, f32 x, f32 y, f32 z)</strong>
+                    <p>Applies a translation to a matrix.</p>
+                </div>
+                <div class="function-item">
+                    <strong>guMtxRotAxisRad(Mtx mt, guVector* axis, f32 rad)</strong>
+                    <p>Applies a rotation around an arbitrary axis to a matrix.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_LoadPosMtxImm(Mtx mt, u32 id)</strong>
+                    <p>Loads a 3x4 matrix into one of the position matrix slots (e.g., <code>GX_PNMTX0</code>).</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_SetCurrentMtx(u32 id)</strong>
+                    <p>Sets the active position/normal matrix slot that will be used to transform upcoming vertices.</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>

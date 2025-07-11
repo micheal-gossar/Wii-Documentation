@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Primitives - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; Drawing Primitives</nav>
+            </div>
+            <h1>Drawing Primitives</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>
+                In GX, all drawing is done by specifying a sequence of vertices that form a "primitive". These are the basic building blocks of all 2D and 3D objects. The process is often called "Immediate Mode" rendering because you are sending vertex data directly to the GPU for processing.
+            </p>
+
+            <h2>The GX_Begin/GX_End Block</h2>
+            <p>
+                All primitive drawing must happen between a `GX_Begin()` and `GX_End()` call. `GX_Begin` tells the GPU what kind of shape you're about to draw and how many vertices it will have.
+            </p>
+            <pre><code class="c">
+#include &lt;ogc/gx.h&gt;
+
+void draw_my_shape() {
+    // Start drawing a primitive
+    GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
+
+    // ... specify 3 vertices here ...
+
+    // Stop drawing the primitive
+    GX_End();
+}
+            </code></pre>
+            <p>
+                The first argument to `GX_Begin` is the primitive type. This determines how the vertices you provide will be connected to form a shape.
+            </p>
+
+            <h2>Primitive Types</h2>
+            <p>Here are the most common primitive types:</p>
+            <ul>
+                <li><code>GX_POINTS</code>: Renders a single point for each vertex.</li>
+                <li><code>GX_LINES</code>: For every 2 vertices, renders a line segment between them.</li>
+                <li><code>GX_LINESTRIP</code>: Renders a continuous line. The first 2 vertices form a line, and each subsequent vertex forms a line with the previous one.</li>
+                <li><code>GX_TRIANGLES</code>: For every 3 vertices, renders a solid triangle.</li>
+                <li><code>GX_TRIANGLESTRIP</code>: A more efficient way to draw connected triangles. The first 3 vertices form a triangle, and each subsequent vertex forms a new triangle with the previous two vertices.</li>
+                <li><code>GX_TRIANGLEFAN</code>: The first vertex is the center point. The next 2 vertices form a triangle with the center, and each subsequent vertex forms a new triangle with the center and the previous vertex. Ideal for circles or cones.</li>
+                <li><code>GX_QUADS</code>: For every 4 vertices, renders a four-sided polygon. Internally, the Wii's GPU only thinks in triangles, so a quad is just two triangles stitched together.</li>
+            </ul>
+
+            <h3>Example: Drawing a Quad</h3>
+            <p>
+                This example draws a simple, 2D colored square on the screen. Note how we specify the position and color for each of the four corners.
+            </p>
+            <pre><code class="c">
+#include &lt;ogc/gx.h&gt;
+
+void draw_a_quad() {
+    // Tell GX we are about to draw 4 vertices to form a quad.
+    // We are using vertex format 0 (GX_VTXFMT0).
+    GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
+
+        // Top-left corner (red)
+        GX_Position3f32(-1.0f, 1.0f, 0.0f);
+        GX_Color4u8(255, 0, 0, 255);
+
+        // Top-right corner (green)
+        GX_Position3f32(1.0f, 1.0f, 0.0f);
+        GX_Color4u8(0, 255, 0, 255);
+
+        // Bottom-right corner (blue)
+        GX_Position3f32(1.0f, -1.0f, 0.0f);
+        GX_Color4u8(0, 0, 255, 255);
+
+        // Bottom-left corner (yellow)
+        GX_Position3f32(-1.0f, -1.0f, 0.0f);
+        GX_Color4u8(255, 255, 0, 255);
+
+    GX_End();
+}
+            </code></pre>
+            <p>
+                The order in which you define the vertices is important for how the shape is drawn and lit, a concept known as "winding order" or "culling" which is covered in more advanced topics. For now, defining them in a clockwise or counter-clockwise order is sufficient.
+            </p>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

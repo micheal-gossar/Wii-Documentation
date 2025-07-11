@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEV Shaders - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item active">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">Spatial Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="NetworkProgramming.html" class="nav-item">Network Programming</a>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Reference</div>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="UsefulStructs.html" class="nav-item">Data Structures</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="../gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="../gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="../gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="../gx_engine/Lighting.html" class="nav-item">Lighting</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Graphics › TEV Shaders</nav>
+            </div>
+            <h1>TEV Shader Programming</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>The Texture Environment (TEV) unit is the programmable shader core of the GameCube/Wii graphics pipeline. Unlike modern GPUs with vertex and pixel shaders, the Hollywood GPU uses a fixed-function vertex processor combined with a highly configurable TEV unit for per-pixel operations.</p>
+                
+                <h3>TEV Architecture</h3>
+                <p>The TEV unit operates as a multi-stage combiner with up to 16 stages. Each stage can:</p>
+                <ul>
+                    <li>Sample from texture units (up to 8 textures)</li>
+                    <li>Perform color and alpha combinatorial operations</li>
+                    <li>Apply lighting calculations</li>
+                    <li>Blend with previous stage results</li>
+                </ul>
+
+                <h2>TEV Stage Configuration</h2>
+                <p>Each TEV stage is configured using the <code>GX_SetTevOp</code> function or manually with <code>GX_SetTevColorIn</code> and <code>GX_SetTevAlphaIn</code>:</p>
+
+                <pre><code>// Simple texture modulation
+GX_SetTevOp(GX_TEVSTAGE0, GX_MODULATE);
+
+// Manual color combiner setup
+GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO, GX_CC_ZERO);
+GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+
+// Alpha combiner setup
+GX_SetTevAlphaIn(GX_TEVSTAGE0, GX_CA_TEXA, GX_CA_RASA, GX_CA_ZERO, GX_CA_ZERO);
+GX_SetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);</code></pre>
+
+                <h3>TEV Color Sources</h3>
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>GX_CC_CPREV</code></td><td>Previous stage color output</td></tr>
+                        <tr><td><code>GX_CC_APREV</code></td><td>Previous stage alpha output</td></tr>
+                        <tr><td><code>GX_CC_C0</code></td><td>Color register 0</td></tr>
+                        <tr><td><code>GX_CC_A0</code></td><td>Alpha register 0</td></tr>
+                        <tr><td><code>GX_CC_C1</code></td><td>Color register 1</td></tr>
+                        <tr><td><code>GX_CC_A1</code></td><td>Alpha register 1</td></tr>
+                        <tr><td><code>GX_CC_C2</code></td><td>Color register 2</td></tr>
+                        <tr><td><code>GX_CC_A2</code></td><td>Alpha register 2</td></tr>
+                        <tr><td><code>GX_CC_TEXC</code></td><td>Texture color</td></tr>
+                        <tr><td><code>GX_CC_TEXA</code></td><td>Texture alpha</td></tr>
+                        <tr><td><code>GX_CC_RASC</code></td><td>Rasterized color (vertex color)</td></tr>
+                        <tr><td><code>GX_CC_RASA</code></td><td>Rasterized alpha (vertex alpha)</td></tr>
+                        <tr><td><code>GX_CC_ONE</code></td><td>Constant 1.0</td></tr>
+                        <tr><td><code>GX_CC_HALF</code></td><td>Constant 0.5</td></tr>
+                        <tr><td><code>GX_CC_ZERO</code></td><td>Constant 0.0</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>Common TEV Operations</h2>
+
+                <h3>1. Simple Texture Mapping</h3>
+                <pre><code>// Basic texture replacement
+GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
+// Equivalent to: output = texture_color</code></pre>
+
+                <h3>2. Texture Modulation</h3>
+                <pre><code>// Multiply texture by vertex color
+GX_SetTevOp(GX_TEVSTAGE0, GX_MODULATE);
+// Equivalent to: output = texture_color * vertex_color</code></pre>
+
+                <h3>3. Multi-texture Blending</h3>
+                <pre><code>// Stage 0: First texture
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
+
+// Stage 1: Blend with second texture
+GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR_NULL);
+GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_TEXA, GX_CC_ZERO);
+GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+// Result: blend = prev_color * (1-tex1_alpha) + tex1_color * tex1_alpha</code></pre>
+
+                <h3>4. Environment Mapping</h3>
+                <pre><code>// Combine base texture with environment map
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+GX_SetTevOp(GX_TEVSTAGE0, GX_MODULATE);
+
+GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR_NULL);
+GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_RASA, GX_CC_ZERO);
+GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+// Result: base_texture * vertex_color + env_map * vertex_alpha</code></pre>
+
+                <h2>Advanced TEV Techniques</h2>
+                
+                <h3>Multi-Pass Rendering</h3>
+                <p>Complex effects often require multiple rendering passes with different TEV configurations:</p>
+                <pre><code>// First pass: Render base geometry with ambient lighting
+GX_SetNumTevStages(1);
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+GX_SetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_TEXA);
+GX_SetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+
+// Render geometry
+render_base_geometry();
+
+// Second pass: Add dynamic lighting with additive blending
+GX_SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_CLEAR);
+GX_SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE); // No Z-write on second pass
+
+GX_SetNumTevStages(2);
+// Stage 0: Sample light texture
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD1, GX_TEXMAP1, GX_COLORNULL);
+GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+
+// Stage 1: Modulate with vertex color intensity
+GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORDNULL, GX_TEXMAPNULL, GX_COLOR0A0);
+GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_ZERO, GX_CC_CPREV, GX_CC_RASC, GX_CC_ZERO);
+GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+
+render_lighting_geometry();</code></pre>
+
+                <h3>Procedural Texture Generation</h3>
+                <p>Use TEV stages to create complex procedural textures without additional texture memory:</p>
+                <pre><code>// Generate animated noise pattern using texture coordinates
+void setup_procedural_noise() {
+    // Stage 0: Sample base noise texture
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+    GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+
+    // Stage 1: Sample offset noise texture with animated coordinates
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP0, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_K0, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+
+    // Stage 2: Add time-based variation using konst color
+    GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAPNULL, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_CPREV, GX_CC_ZERO, GX_CC_ZERO, GX_CC_K1);
+    GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_SUB, GX_TB_ZERO, GX_CS_SCALE_2, GX_TRUE, GX_TEVPREV);
+    
+    // Set animated konst colors
+    float time = get_game_time();
+    GXColor noise_factor = {
+        (u8)(128 + 64 * sin(time * 0.1f)),
+        (u8)(128 + 64 * cos(time * 0.15f)),
+        (u8)(128 + 64 * sin(time * 0.08f)),
+        255
+    };
+    GX_SetTevKColor(GX_KCOLOR0, noise_factor);
+}</code></pre>
+
+                <h3>Advanced Lighting Models</h3>
+                <p>Implement sophisticated lighting using multiple TEV stages:</p>
+                <pre><code>// Phong lighting implementation using TEV
+void setup_phong_lighting() {
+    GX_SetNumTevStages(4);
+    
+    // Stage 0: Ambient term
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_K0, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    
+    // Stage 1: Diffuse term (N·L)
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR0A0); // Normal map
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    
+    // Stage 2: Specular preparation
+    GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORD2, GX_TEXMAP2, GX_COLOR1A1); // Cube map lookup
+    GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+    GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVREG0);
+    
+    // Stage 3: Combine all terms
+    GX_SetTevOrder(GX_TEVSTAGE3, GX_TEXCOORDNULL, GX_TEXMAPNULL, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE3, GX_CC_CPREV, GX_CC_C0, GX_CC_APREV, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE3, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}</code></pre>
+
+                <h3>Screen-Space Effects</h3>
+                <p>Implement post-processing effects using full-screen quads and TEV:</p>
+                <pre><code>// Screen-space blur effect
+void render_blur_effect() {
+    // Render scene to texture first
+    render_scene_to_texture();
+    
+    // Horizontal blur pass
+    GX_SetNumTevStages(3);
+    
+    for (int i = 0; i < 3; i++) {
+        GX_SetTevOrder(i, GX_TEXCOORD0 + i, GX_TEXMAP0, GX_COLORNULL);
+        GX_SetTevColorIn(i, (i == 0) ? GX_CC_ZERO : GX_CC_CPREV, 
+                        GX_CC_TEXC, GX_CC_K0, GX_CC_ZERO);
+        GX_SetTevColorOp(i, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    }
+    
+    // Set blur weights
+    GXColor blur_weights = {85, 85, 85, 255}; // 1/3 weight for each sample
+    GX_SetTevKColor(GX_KCOLOR0, blur_weights);
+    
+    render_fullscreen_quad_with_offset_uvs();
+}</code></pre>
+
+                <h2>TEV Register Management</h2>
+                <p>The TEV has 4 color registers (PREV, 0, 1, 2) that can store intermediate results:</p>
+                <pre><code>// Complex multi-stage effect using registers
+void setup_complex_material() {
+    GX_SetNumTevStages(6);
+    
+    // Stage 0: Store base color in register 0
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+    GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVREG0);
+    
+    // Stage 1: Store normal map in register 1
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVREG1);
+    
+    // Stage 2: Calculate lighting using register 1 (normal)
+    GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAPNULL, GX_COLOR0A0);
+    GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_C1, GX_CC_RASC, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVREG2);
+    
+    // Stage 3: Modulate base color (reg 0) with lighting (reg 2)
+    GX_SetTevOrder(GX_TEVSTAGE3, GX_TEXCOORDNULL, GX_TEXMAPNULL, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE3, GX_CC_ZERO, GX_CC_C0, GX_CC_C2, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE3, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    
+    // Stages 4-5: Add specular highlights, environment mapping, etc.
+}</code></pre>
+
+                <h2>Performance Optimization</h2>
+                
+                <h3>TEV Stage Minimization</h3>
+                <p>Each active TEV stage adds processing cost. Optimize by combining operations:</p>
+                <pre><code>// Inefficient: 3 stages for simple modulation
+GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_ZERO, GX_CC_CPREV, GX_CC_RASC, GX_CC_ZERO);
+GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_CPREV, GX_CC_K0, GX_CC_ZERO);
+
+// Efficient: 1 stage combining all operations
+GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO);
+GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);</code></pre>
+
+                <h3>Texture Unit Optimization</h3>
+                <p>Minimize texture loads by reusing textures across stages:</p>
+                <pre><code>// Reuse texture across multiple stages
+GX_LoadTexObj(&shared_texture, GX_TEXMAP0);
+
+// Stage 0: Sample with UV0
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+
+// Stage 1: Sample same texture with UV1 (different coordinates)
+GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP0, GX_COLORNULL);</code></pre>
+
+                <h2>Common TEV Patterns</h2>
+                
+                <h3>Decal Rendering</h3>
+                <pre><code>void setup_decal_blend() {
+    GX_SetNumTevStages(2);
+    
+    // Stage 0: Base texture
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+    GX_SetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_TEXA);
+    
+    // Stage 1: Decal blend using alpha
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_APREV, GX_CC_ZERO);
+    GX_SetTevAlphaIn(GX_TEVSTAGE1, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
+}</code></pre>
+
+                <h3>Environment Mapping</h3>
+                <pre><code>void setup_environment_mapping() {
+    GX_SetNumTevStages(2);
+    
+    // Stage 0: Base material
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
+    
+    // Stage 1: Add environment reflection
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLORNULL);
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_K0, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    
+    // Set reflection strength
+    GXColor reflection_strength = {128, 128, 128, 255}; // 50% blend
+    GX_SetTevKColor(GX_KCOLOR0, reflection_strength);
+}</code></pre>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="Textures.html">Texture Management</a> - Setting up textures for TEV</li>
+                        <li><a href="Lighting.html">Lighting System</a> - Hardware lighting integration</li>
+                        <li><a href="../gx_engine/TEV.html">TEV Implementation Details</a> - Low-level TEV programming</li>
+                        <li><a href="Performance.html">Performance Optimization</a> - TEV performance tips</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

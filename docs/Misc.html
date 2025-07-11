@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miscellaneous Topics - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+        <a href="Miis.html" class="nav-item">Mii Integration</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Miscellaneous Topics</h1>
+      <p class="intro">This section covers various topics, best practices, and standard library functions that are essential for robust Wii development.</p>
+
+      <section id="variable-types">
+        <h2>Variable Type Guidelines</h2>
+        <p>For portability and clarity, it is highly recommended to use the fixed-width integer types provided by `stdint.h` and the standard floating-point types. The `libogc` headers also define convenient aliases.</p>
+        <table>
+          <thead>
+            <tr><th>Recommended Type</th><th>`stdint.h` Equivalent</th><th>Size</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>u8</code></td><td><code>uint8_t</code></td><td>8-bit</td><td>Unsigned byte</td></tr>
+            <tr><td><code>s8</code></td><td><code>int8_t</code></td><td>8-bit</td><td>Signed byte</td></tr>
+            <tr><td><code>u16</code></td><td><code>uint16_t</code></td><td>16-bit</td><td>Unsigned short</td></tr>
+            <tr><td><code>s16</code></td><td><code>int16_t</code></td><td>16-bit</td><td>Signed short</td></tr>
+            <tr><td><code>u32</code></td><td><code>uint32_t</code></td><td>32-bit</td><td>Unsigned integer</td></tr>
+            <tr><td><code>s32</code></td><td><code>int32_t</code></td><td>32-bit</td><td>Signed integer</td></tr>
+            <tr><td><code>u64</code></td><td><code>uint64_t</code></td><td>64-bit</td><td>Unsigned long long</td></tr>
+            <tr><td><code>s64</code></td><td><code>int64_t</code></td><td>64-bit</td><td>Signed long long</td></tr>
+            <tr><td><code>f32</code></td><td><code>float</code></td><td>32-bit</td><td>Single-precision float</td></tr>
+            <tr><td><code>f64</code></td><td><code>double</code></td><td>64-bit</td><td>Double-precision float</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="debugging-output">
+        <h2>Debugging Output</h2>
+        <p>The standard C function <code>printf</code> is the most common way to send debugging information from your application. To see the output, you typically need a way to view the console, such as the Dolphin emulator's log window or a hardware debugger like a USB Gecko.</p>
+        <p>First, you must initialize a console for output. This is usually done once at the beginning of your `main` function.</p>
+        <pre><code class="language-cpp">#include &lt;stdio.h&gt;
+#include &lt;ogc/video.h&gt;
+#include &lt;ogc/system.h&gt;
+
+void InitializeConsole() {
+    VIDEO_Init();
+    
+    // This is the standard stuff.
+    GXRModeObj* rmode = VIDEO_GetPreferredMode(NULL);
+    void* xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+    
+    // Initialize the console.
+    console_init(xfb, 20, 20, rmode->fbWidth, rmode->xfbHeight, rmode->fbWidth * VI_DISPLAY_PIX_SZ);
+    
+    VIDEO_Configure(rmode);
+    VIDEO_SetNextFramebuffer(xfb);
+    VIDEO_SetBlack(FALSE);
+    VIDEO_Flush();
+    VIDEO_WaitVSync();
+    if(rmode->viTVMode & VI_NON_INTERLACE) VIDEO_WaitVSync();
+}
+
+int main(int argc, char **argv) {
+    InitializeConsole();
+
+    printf("Hello, Wii!\n");
+
+    int score = 100;
+    const char* playerName = "Player1";
+
+    printf("Player %s has started the game.\n", playerName);
+    printf("Initial score: %d\n", score);
+
+    while(1) {
+        // Your game loop here...
+        VIDEO_WaitVSync();
+    }
+
+    return 0;
+}
+</code></pre>
+        <p>The output of <code>printf</code> will now appear on the screen and in any connected logging clients.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

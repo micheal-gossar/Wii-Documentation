@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classic Controller - GX Reality Engine Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+        <h1>Wii Classic Controller</h1>
+        <p class="intro">The Classic Controller provides a traditional gamepad layout, featuring two analog sticks, a D-pad, four face buttons (A, B, X, Y), two shoulder buttons (L, R), and two digital triggers (ZL, ZR).</p>
+  
+        <section id="overview">
+          <h2>Overview</h2>
+          <p>The Classic Controller plugs into the Wiimote's extension port, much like the Nunchuk. It's designed for playing Virtual Console games and certain Wii titles that benefit from a standard controller layout. There is also a "Classic Controller Pro" version, which has a more ergonomic grip and different shoulder buttons, but it is functionally identical from a software perspective.</p>
+        </section>
+  
+        <section id="enabling">
+          <h2>Enabling the Classic Controller</h2>
+          <p>Detection and enabling are handled by the standard WPAD expansion system. You must set an expansion callback to be notified when it's connected or disconnected.</p>
+          <pre><code class="language-cpp">// In your initialization code
+WPAD_SetExpansionCallback(expansion_callback);
+
+// You can probe to see if it's already connected
+u32 type;
+WPAD_Probe(WPAD_CHAN_0, &type);
+if (type == WPAD_EXP_CLASSIC) {
+    // Classic Controller is connected
+}
+</code></pre>
+        </section>
+  
+        <section id="reading-data">
+          <h2>Reading Classic Controller Data</h2>
+          <p>Data is accessed via the <code>expansion_t</code> member of the <code>WPADData</code> struct after a call to <code>WPAD_ScanPads()</code>. You must first check that the expansion type is indeed <code>WPAD_EXP_CLASSIC</code> before trying to access its data.</p>
+          <p>The key data fields within <code>wpad_data->expansion.classic</code> are:</p>
+          <ul>
+              <li><code>u16 btns_held</code>: A bitmask for all digital buttons currently being held down.</li>
+              <li><code>u16 btns_dwn</code>: A bitmask for all digital buttons that were just pressed in this frame.</li>
+              <li><code>u16 btns_up</code>: A bitmask for all digital buttons that were just released in this frame.</li>
+              <li><code>joystick_t ljs, rjs</code>: The left and right analog sticks. Each contains <code>f32 x, y</code> values from -1.0 to 1.0, as well as angle and magnitude.</li>
+              <li><code>f32 ltrig, rtrig</code>: The left and right analog triggers. These values range from 0.0 (released) to 1.0 (fully pressed). Note that on the original Classic Controller, the L and R shoulder buttons are digital and will only report 0.0 or 1.0. The Classic Controller Pro has fully analog triggers.</li>
+          </ul>
+        </section>
+  
+        <section id="button-constants">
+          <h2>Button Constants</h2>
+          <p>To check for button presses, use the following bitmask constants with the <code>btns_held</code>, <code>btns_dwn</code>, or <code>btns_up</code> fields.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Constant</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>CLASSIC_BUTTON_A</code></td><td>A Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_B</code></td><td>B Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_X</code></td><td>X Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_Y</code></td><td>Y Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_PLUS</code></td><td>+ (Start) Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_MINUS</code></td><td>- (Select) Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_HOME</code></td><td>HOME Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_UP</code></td><td>D-Pad Up</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_DOWN</code></td><td>D-Pad Down</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_LEFT</code></td><td>D-Pad Left</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_RIGHT</code></td><td>D-Pad Right</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_L</code></td><td>L Shoulder Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_R</code></td><td>R Shoulder Button</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_ZL</code></td><td>ZL Trigger</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_ZR</code></td><td>ZR Trigger</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_FULL_L</code></td><td>L Trigger fully pressed (analog)</td></tr>
+              <tr><td><code>CLASSIC_BUTTON_FULL_R</code></td><td>R Trigger fully pressed (analog)</td></tr>
+            </tbody>
+          </table>
+        </section>
+  
+        <section id="code-example">
+          <h2>Code Example</h2>
+          <p>This example demonstrates how to properly detect the Classic Controller and read its state, including all buttons, both analog sticks, and both triggers.</p>
+          <pre><code class="language-cpp">// A global or member variable to track connection status
+bool classic_controller_connected = false;
+
+// Expansion callback function
+void expansion_callback(s32 chan, s32 type) {
+    if (chan == WPAD_CHAN_0) { // We only care about the first Wiimote
+        if (type == WPAD_EXP_CLASSIC) {
+            classic_controller_connected = true;
+        } else {
+            classic_controller_connected = false;
+        }
+    }
+}
+
+void CheckClassicControllerInput(int chan) {
+    if (!classic_controller_connected) {
+        return;
+    }
+
+    WPADData* wpad_data = WPAD_Data(chan);
+
+    // Check for newly pressed buttons
+    u16 buttonsDown = wpad_data->expansion.classic.btns_dwn;
+    if (buttonsDown & CLASSIC_BUTTON_A) { /* A was pressed */ }
+    if (buttonsDown & CLASSIC_BUTTON_B) { /* B was pressed */ }
+
+    // Check D-Pad state (held)
+    if (wpad_data->expansion.classic.btns_held & CLASSIC_BUTTON_UP) { /* D-Pad up is held */ }
+
+    // Read Left Analog Stick
+    joystick_t* left_stick = &wpad_data->expansion.classic.ljs;
+    if (left_stick->mag > 0.1) { // Use a deadzone to avoid noise
+        // Use left_stick->x and left_stick->y
+    }
+
+    // Read Analog Triggers
+    float left_trigger = wpad_data->expansion.classic.ltrig;
+    if (left_trigger > 0.05) {
+        // Left trigger is being pressed
+    }
+}
+
+// In your main function, before the loop:
+WPAD_SetExpansionCallback(expansion_callback);
+
+// In your main loop:
+WPAD_ScanPads();
+CheckClassicControllerInput(WPAD_CHAN_0);
+</code></pre>
+        </section>
+  
+        <section id="function-reference">
+          <h2>Function Reference</h2>
+          <dl>
+            <dt><code>void WPAD_SetExpansionCallback(WPADExpansionCallback callback)</code></dt>
+            <dd>
+              <p>Registers a callback function that will be invoked whenever an expansion device (like a Nunchuk or Classic Controller) is connected to or disconnected from a Wiimote. This is the recommended way to manage expansion devices.</p>
+            </dd>
+            <dt><code>s32 WPAD_Probe(s32 chan, u32* type)</code></dt>
+            <dd>
+              <p>Manually checks for the presence and type of an expansion device on a specific Wiimote channel. This is useful for checking what is connected at startup, before the callback has a chance to fire.</p>
+            </dd>
+          </dl>
+        </section>
+    </main>
+  </div>
+</body>
+</html>

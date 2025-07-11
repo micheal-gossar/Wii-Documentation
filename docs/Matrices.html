@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matrix Mathematics - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Matrix Mathematics</h1>
+      <p class="intro">Matrices are the language of spatial transformation. They are the mathematical constructs that allow you to move, rotate, and scale your models within the 3D universe. In GX, you don't just use matrices; you conduct a symphony of geometric manipulation.</p>
+
+      <section id="core-matrices">
+        <h2>The Core Matrices</h2>
+        <p>The GX pipeline primarily revolves around three fundamental matrices:</p>
+        <ul>
+          <li><strong>Position Matrix (Model/View):</strong> This matrix transforms vertices from their local model space into the camera's view space. It's a combination of your model's position in the world and the camera's position and orientation.</li>
+          <li><strong>Projection Matrix:</strong> This matrix applies perspective, transforming the 3D view space into a 2D space that can be mapped to the screen. It's what creates the illusion of depth.</li>
+          <li><strong>Texture Matrix:</strong> This matrix manipulates texture coordinates, allowing you to scroll, scale, or rotate textures on a model's surface.</li>
+        </ul>
+      </section>
+
+      <section id="modelview-matrix">
+        <h2>Manipulating the ModelView Matrix</h2>
+        <p>The `gu` (Graphics Utility) library provides functions to create standard transformation matrices. You then load these into the GPU.</p>
+        <pre><code class="language-cpp">// A 4x3 matrix is standard for ModelView in GX
+Mtx modelViewMatrix;
+
+// Create a "view" matrix representing the camera's position and orientation
+guLookAt(modelViewMatrix, 
+         &camera_pos,    // Camera position
+         &camera_up,     // Up vector
+         &camera_target); // Where the camera is looking
+
+// Now, let's position a model in the world.
+// We'll create a translation matrix and concatenate it with the view matrix.
+Mtx translationMatrix, finalMatrix;
+guMtxIdentity(translationMatrix);
+guMtxTransApply(translationMatrix, translationMatrix, 10.0f, 0.0f, -20.0f); // Move 10 units right, 20 units "in"
+
+// Combine the model's translation with the camera's view
+guMtxConcat(modelViewMatrix, translationMatrix, finalMatrix);
+
+// Load the final combined matrix into the GPU for the position/normal matrix slot
+GX_LoadPosMtxImm(finalMatrix, GX_PNMTX0);
+</code></pre>
+      </section>
+
+      <section id="projection-matrix">
+        <h2>Defining the Projection</h2>
+        <p>The projection matrix defines your camera's lens. A perspective projection is most common for 3D games.</p>
+        <pre><code class="language-cpp">Mtx44 projectionMatrix;
+
+// Create a perspective projection matrix
+// fovy: field of view in Y direction
+// aspect: width / height
+// n: near clipping plane
+// f: far clipping plane
+guPerspective(projectionMatrix, 45.0f, (f32)rmode->fbWidth / (f32)rmode->efbHeight, 0.1f, 1000.0f);
+
+// Load the projection matrix into the GPU
+GX_LoadProjectionMtx(projectionMatrix, GX_PERSPECTIVE);
+</code></pre>
+        <p>With the correct matrices loaded, every vertex you send via <code>GX_Position3f32</code> will be correctly transformed and placed into your 3D world, ready for rasterization.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

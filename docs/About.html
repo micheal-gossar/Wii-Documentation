@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+                <a href="About.html" class="nav-item active">About</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Advanced › About</nav>
+            </div>
+            <h1>About This Documentation</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: AI Documentation System</p>
+            <section class="page-content">
+                <div class="info-box">
+                    <h4>⚠️ Important Notice</h4>
+                    <p><strong>This entire documentation site was created entirely by artificial intelligence.</strong></p>
+                    <p>Michael Gossar takes no credit in its creation. This documentation represents an AI-generated comprehensive resource for Nintendo Wii homebrew development, compiled from various online sources, technical specifications, and development resources available on the internet.</p>
+                </div>
+
+                <h2>Documentation Overview</h2>
+                <p>This comprehensive documentation site covers every aspect of Nintendo Wii homebrew development, with particular focus on the GX graphics library, hardware-specific programming, and advanced system integration techniques.</p>
+
+                <h3>What's Covered</h3>
+                <ul>
+                    <li><strong>Graphics Programming:</strong> Complete GX pipeline documentation, TEV shader programming, hardware-level optimization</li>
+                    <li><strong>Input Systems:</strong> Comprehensive controller support including Wiimote, Nunchuk, Classic Controller, and Balance Board</li>
+                    <li><strong>Audio Systems:</strong> 3D spatial audio, streaming, and DSP programming</li>
+                    <li><strong>System Programming:</strong> Memory management, threading, networking, and hardware interfacing</li>
+                    <li><strong>Advanced Topics:</strong> Performance optimization, asset pipelines, and C/C++ interoperability</li>
+                    <li><strong>GX Engine:</strong> Low-level graphics hardware programming and state management</li>
+                </ul>
+
+                <h2>Technical Specifications</h2>
+                <div class="parameter-table-container">
+                    <table class="parameter-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Specification</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>CPU</td><td>PowerPC 750CL "Broadway"</td><td>729 MHz, 32-bit RISC processor</td></tr>
+                            <tr><td>GPU</td><td>ATI Hollywood</td><td>243 MHz, custom TEV pipeline</td></tr>
+                            <tr><td>Main RAM</td><td>MEM1</td><td>24 MB GDDR3 @ 324 MHz</td></tr>
+                            <tr><td>Graphics RAM</td><td>MEM2</td><td>64 MB GDDR3 @ 405 MHz</td></tr>
+                            <tr><td>Storage</td><td>512 MB NAND Flash</td><td>System storage and save data</td></tr>
+                            <tr><td>Optical</td><td>DVD-ROM</td><td>Single/dual layer support</td></tr>
+                            <tr><td>Audio</td><td>Custom DSP</td><td>Hardware-accelerated 3D audio</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h2>Development Libraries</h2>
+                <h3>Core Libraries</h3>
+                <ul>
+                    <li><strong>libogc:</strong> Main development library providing hardware abstraction</li>
+                    <li><strong>devkitPPC:</strong> PowerPC cross-compilation toolchain</li>
+                    <li><strong>libfat:</strong> FAT filesystem support for SD/USB storage</li>
+                    <li><strong>libwiisprite:</strong> 2D sprite and graphics library</li>
+                    <li><strong>GRRLIB:</strong> High-level 2D/3D graphics library</li>
+                </ul>
+
+                <h3>Audio Libraries</h3>
+                <ul>
+                    <li><strong>asndlib:</strong> Advanced sound library with 3D positioning</li>
+                    <li><strong>libmad:</strong> MP3 decoding support</li>
+                    <li><strong>libvorbisidec (Tremor):</strong> OGG Vorbis decoding</li>
+                    <li><strong>modplay:</strong> Module music playback</li>
+                </ul>
+
+                <h3>Input Libraries</h3>
+                <ul>
+                    <li><strong>wiiuse:</strong> Wiimote and extension controller support</li>
+                    <li><strong>libwiikeyboard:</strong> USB keyboard support</li>
+                    <li><strong>libwiimote:</strong> Low-level Wiimote communication</li>
+                </ul>
+
+                <h2>Documentation Sources</h2>
+                <p>This documentation was compiled from various sources across the internet, including:</p>
+                <ul>
+                    <li>Nintendo's official GameCube/Wii development documentation</li>
+                    <li>DevkitPro community documentation and examples</li>
+                    <li>WiiBrew wiki and community contributions</li>
+                    <li>Various homebrew development forums and tutorials</li>
+                    <li>Open-source project documentation and code analysis</li>
+                    <li>Technical specifications from hardware reverse engineering</li>
+                </ul>
+
+                <h2>AI Generation Process</h2>
+                <p>This documentation represents a comprehensive aggregation and synthesis of Nintendo Wii development information available online. The AI system:</p>
+                <ul>
+                    <li>Analyzed hundreds of development resources and technical documents</li>
+                    <li>Synthesized information from multiple sources for accuracy</li>
+                    <li>Organized content into a coherent, searchable structure</li>
+                    <li>Generated practical code examples and implementation guides</li>
+                    <li>Created cross-references and navigation systems</li>
+                </ul>
+
+                <h2>Accuracy and Limitations</h2>
+                <div class="warning-box">
+                    <h4>⚠️ Important Disclaimers</h4>
+                    <ul>
+                        <li>All information is generated by AI and should be verified against official sources</li>
+                        <li>Code examples may require testing and validation in actual development environments</li>
+                        <li>Hardware specifications are based on publicly available information</li>
+                        <li>This documentation is for educational and homebrew development purposes only</li>
+                        <li>Nintendo Wii is a trademark of Nintendo Co., Ltd.</li>
+                    </ul>
+                </div>
+
+                <h2>Contributing and Updates</h2>
+                <p>As this is an AI-generated resource, traditional contribution methods don't apply. However, this documentation can serve as a comprehensive starting point for:</p>
+                <ul>
+                    <li>Learning Nintendo Wii homebrew development</li>
+                    <li>Understanding the GX graphics pipeline</li>
+                    <li>Implementing advanced system features</li>
+                    <li>Optimizing performance for the Wii hardware</li>
+                </ul>
+
+                <h2>Contact Information</h2>
+                <p><strong>Site Owner:</strong> Michael Gossar</p>
+                <p><strong>Creation:</strong> AI-Generated Documentation System</p>
+                <p><strong>Purpose:</strong> Comprehensive Wii homebrew development reference</p>
+
+                <div class="info-box">
+                    <h4>Legal Notice</h4>
+                    <p>This documentation is provided for educational purposes. All trademarks and copyrights belong to their respective owners. This site is not affiliated with Nintendo Co., Ltd.</p>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | AI-Generated Content | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

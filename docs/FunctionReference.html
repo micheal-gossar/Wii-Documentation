@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Function Reference - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .function-reference {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: calc(100vh - 120px);
+        }
+        
+        .function-list {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100%;
+        }
+        
+        .function-search {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .function-category-list {
+            margin-bottom: 20px;
+        }
+        
+        .category-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .function-item {
+            display: block;
+            padding: 8px 12px;
+            color: #666;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            transition: background-color 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+        
+        .function-item:hover,
+        .function-item.active {
+            background: #3498db;
+            color: white;
+        }
+        
+        .function-detail {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            overflow-y: auto;
+            height: 100%;
+        }
+        
+        .function-signature {
+            background: #f4f4f4;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .parameters-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .parameters-table th,
+        .parameters-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .parameters-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .param-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .param-type {
+            font-family: 'JetBrains Mono', monospace;
+            color: #e74c3c;
+        }
+        
+        .example-code {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .example-code pre {
+            margin: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .see-also {
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .see-also h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        
+        .see-also a {
+            color: #3498db;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        
+        .see-also a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item active">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+            </div>
+        </nav>
+        
+        <main class="content">
+            <div class="content-header">
+                <h1>Function Reference</h1>
+                <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            </div>
+            
+            <div class="function-reference">
+                <div class="function-list">
+                    <input type="text" class="function-search" placeholder="Search functions..." id="functionSearch">
+                    
+                    <div class="function-category-list">
+                        <div class="category-title">Core Initialization</div>
+                        <a href="#" class="function-item active" data-function="GX_Init">GX_Init</a>
+                        <a href="#" class="function-item" data-function="VIDEO_Init">VIDEO_Init</a>
+                        <a href="#" class="function-item" data-function="VIDEO_GetPreferredMode">VIDEO_GetPreferredMode</a>
+                        <a href="#" class="function-item" data-function="VIDEO_Configure">VIDEO_Configure</a>
+                    </div>
+                    
+                    <div class="function-category-list">
+                        <div class="category-title">Rendering Control</div>
+                        <a href="#" class="function-item" data-function="GX_SetViewport">GX_SetViewport</a>
+                        <a href="#" class="function-item" data-function="GX_CopyDisp">GX_CopyDisp</a>
+                        <a href="#" class="function-item" data-function="GX_DrawDone">GX_DrawDone</a>
+                        <a href="#" class="function-item" data-function="GX_SetCopyClear">GX_SetCopyClear</a>
+                    </div>
+                    
+                    <div class="function-category-list">
+                        <div class="category-title">Vertex Processing</div>
+                        <a href="#" class="function-item" data-function="GX_SetVtxDesc">GX_SetVtxDesc</a>
+                        <a href="#" class="function-item" data-function="GX_SetVtxAttrFmt">GX_SetVtxAttrFmt</a>
+                        <a href="#" class="function-item" data-function="GX_Begin">GX_Begin</a>
+                        <a href="#" class="function-item" data-function="GX_Position3f32">GX_Position3f32</a>
+                        <a href="#" class="function-item" data-function="GX_Color4u8">GX_Color4u8</a>
+                        <a href="#" class="function-item" data-function="GX_End">GX_End</a>
+                    </div>
+                    
+                    <div class="function-category-list">
+                        <div class="category-title">Matrix Operations</div>
+                        <a href="#" class="function-item" data-function="GX_LoadProjectionMtx">GX_LoadProjectionMtx</a>
+                        <a href="#" class="function-item" data-function="GX_LoadPosMtxImm">GX_LoadPosMtxImm</a>
+                        <a href="#" class="function-item" data-function="guPerspective">guPerspective</a>
+                        <a href="#" class="function-item" data-function="guLookAt">guLookAt</a>
+                    </div>
+                    
+                    <div class="function-category-list">
+                        <div class="category-title">State Management</div>
+                        <a href="#" class="function-item" data-function="GX_SetZMode">GX_SetZMode</a>
+                        <a href="#" class="function-item" data-function="GX_SetBlendMode">GX_SetBlendMode</a>
+                        <a href="#" class="function-item" data-function="GX_SetCullMode">GX_SetCullMode</a>
+                        <a href="#" class="function-item" data-function="GX_SetColorUpdate">GX_SetColorUpdate</a>
+                    </div>
+                </div>
+                
+                <div class="function-detail" id="functionDetail">
+                    <div class="function-signature">
+                        <code>void GX_Init(void *fifo, u32 size)</code>
+                    </div>
+                    
+                    <h3>Description</h3>
+                    <p>Initializes the GX graphics engine with the specified FIFO buffer. This function must be called before any other GX functions can be used. The FIFO buffer is used to queue graphics commands that are sent to the graphics processor.</p>
+                    
+                    <h3>Parameters</h3>
+                    <table class="parameters-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="param-name">fifo</td>
+                                <td class="param-type">void*</td>
+                                <td>Pointer to a 32-byte aligned buffer that will serve as the command FIFO. Must not be NULL.</td>
+                            </tr>
+                            <tr>
+                                <td class="param-name">size</td>
+                                <td class="param-type">u32</td>
+                                <td>Size of the FIFO buffer in bytes. Minimum recommended size is 256KB (262144 bytes).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h3>Return Value</h3>
+                    <p>None (void function)</p>
+                    
+                    <h3>Example Usage</h3>
+                    <div class="example-code">
+                        <pre><code>#define DEFAULT_FIFO_SIZE (256 * 1024)
+
+void initialize_graphics() {
+    // Allocate 32-byte aligned FIFO buffer
+    void *gp_fifo = memalign(32, DEFAULT_FIFO_SIZE);
+    memset(gp_fifo, 0, DEFAULT_FIFO_SIZE);
+    
+    // Initialize GX with the FIFO buffer
+    GX_Init(gp_fifo, DEFAULT_FIFO_SIZE);
+    
+    // Continue with other GX setup...
+}</code></pre>
+                    </div>
+                    
+                    <h3>Notes</h3>
+                    <ul>
+                        <li>The FIFO buffer must be 32-byte aligned for optimal performance</li>
+                        <li>A larger FIFO buffer can improve performance by reducing GPU stalls</li>
+                        <li>This function should only be called once during application initialization</li>
+                        <li>Call this function after VIDEO_Init() but before any drawing operations</li>
+                    </ul>
+                    
+                    <div class="see-also">
+                        <h4>See Also</h4>
+                        <a href="#" data-function="VIDEO_Init">VIDEO_Init</a>
+                        <a href="#" data-function="GX_SetViewport">GX_SetViewport</a>
+                        <a href="#" data-function="GX_SetCopyClear">GX_SetCopyClear</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Function reference data
+        const functions = {
+            'GX_Init': {
+                signature: 'void GX_Init(void *fifo, u32 size)',
+                description: 'Initializes the GX graphics engine with the specified FIFO buffer. This function must be called before any other GX functions can be used.',
+                parameters: [
+                    { name: 'fifo', type: 'void*', description: 'Pointer to a 32-byte aligned buffer that will serve as the command FIFO. Must not be NULL.' },
+                    { name: 'size', type: 'u32', description: 'Size of the FIFO buffer in bytes. Minimum recommended size is 256KB (262144 bytes).' }
+                ],
+                returnValue: 'None (void function)',
+                example: `#define DEFAULT_FIFO_SIZE (256 * 1024)
+
+void initialize_graphics() {
+    // Allocate 32-byte aligned FIFO buffer
+    void *gp_fifo = memalign(32, DEFAULT_FIFO_SIZE);
+    memset(gp_fifo, 0, DEFAULT_FIFO_SIZE);
+    
+    // Initialize GX with the FIFO buffer
+    GX_Init(gp_fifo, DEFAULT_FIFO_SIZE);
+    
+    // Continue with other GX setup...
+}`,
+                notes: [
+                    'The FIFO buffer must be 32-byte aligned for optimal performance',
+                    'A larger FIFO buffer can improve performance by reducing GPU stalls',
+                    'This function should only be called once during application initialization',
+                    'Call this function after VIDEO_Init() but before any drawing operations'
+                ],
+                seeAlso: ['VIDEO_Init', 'GX_SetViewport', 'GX_SetCopyClear']
+            },
+            'GX_SetViewport': {
+                signature: 'void GX_SetViewport(f32 xOrig, f32 yOrig, f32 wd, f32 ht, f32 nearZ, f32 farZ)',
+                description: 'Sets the viewport transformation parameters. The viewport defines the rectangular area of the framebuffer where rendering will occur.',
+                parameters: [
+                    { name: 'xOrig', type: 'f32', description: 'X coordinate of the viewport origin (left edge) in pixels' },
+                    { name: 'yOrig', type: 'f32', description: 'Y coordinate of the viewport origin (top edge) in pixels' },
+                    { name: 'wd', type: 'f32', description: 'Width of the viewport in pixels' },
+                    { name: 'ht', type: 'f32', description: 'Height of the viewport in pixels' },
+                    { name: 'nearZ', type: 'f32', description: 'Near clipping plane distance (typically 0.0)' },
+                    { name: 'farZ', type: 'f32', description: 'Far clipping plane distance (typically 1.0)' }
+                ],
+                returnValue: 'None (void function)',
+                example: `// Set viewport to full screen
+GX_SetViewport(0, 0, rmode->fbWidth, rmode->efbHeight, 0.0f, 1.0f);
+
+// Set viewport to quarter screen in top-left
+GX_SetViewport(0, 0, rmode->fbWidth/2, rmode->efbHeight/2, 0.0f, 1.0f);`,
+                notes: [
+                    'The viewport coordinates are in screen pixels, not normalized coordinates',
+                    'nearZ and farZ values are typically 0.0 and 1.0 respectively',
+                    'Changing the viewport affects all subsequent rendering operations',
+                    'The viewport must be set before any drawing operations'
+                ],
+                seeAlso: ['GX_LoadProjectionMtx', 'GX_SetScissor', 'guPerspective']
+            },
+            'GX_Begin': {
+                signature: 'void GX_Begin(u8 primtype, u8 vtxfmt, u16 nverts)',
+                description: 'Begins an immediate-mode primitive. All vertex data submitted between GX_Begin() and GX_End() will be rendered as the specified primitive type.',
+                parameters: [
+                    { name: 'primtype', type: 'u8', description: 'Primitive type: GX_POINTS, GX_LINES, GX_LINESTRIP, GX_TRIANGLES, GX_TRIANGLESTRIP, GX_TRIANGLEFAN, GX_QUADS' },
+                    { name: 'vtxfmt', type: 'u8', description: 'Vertex format descriptor (GX_VTXFMT0 through GX_VTXFMT7)' },
+                    { name: 'nverts', type: 'u16', description: 'Number of vertices that will be submitted' }
+                ],
+                returnValue: 'None (void function)',
+                example: `// Draw a triangle with 3 vertices
+GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
+    GX_Position3f32(0.0f, 1.0f, 0.0f);   // Top vertex
+    GX_Color4u8(255, 0, 0, 255);         // Red
+    
+    GX_Position3f32(-1.0f, -1.0f, 0.0f); // Bottom left
+    GX_Color4u8(0, 255, 0, 255);         // Green
+    
+    GX_Position3f32(1.0f, -1.0f, 0.0f);  // Bottom right
+    GX_Color4u8(0, 0, 255, 255);         // Blue
+GX_End();`,
+                notes: [
+                    'Must be paired with GX_End() to complete the primitive',
+                    'The vertex format must be set up with GX_SetVtxDesc() and GX_SetVtxAttrFmt() first',
+                    'The nverts parameter helps the GPU optimize command processing',
+                    'Vertex data must be submitted in the correct order for the primitive type'
+                ],
+                seeAlso: ['GX_End', 'GX_SetVtxDesc', 'GX_Position3f32', 'GX_Color4u8']
+            }
+        };
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            const functionItems = document.querySelectorAll('.function-item');
+            const functionDetail = document.getElementById('functionDetail');
+            const searchInput = document.getElementById('functionSearch');
+            
+            // Function item click handler
+            functionItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const functionName = this.dataset.function;
+                    
+                    // Update active state
+                    functionItems.forEach(fi => fi.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Load function details
+                    loadFunctionDetail(functionName);
+                });
+            });
+            
+            // Search functionality
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                functionItems.forEach(item => {
+                    const functionName = item.textContent.toLowerCase();
+                    if (functionName.includes(searchTerm)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Load initial function (GX_Init)
+            loadFunctionDetail('GX_Init');
+        });
+        
+        function loadFunctionDetail(functionName) {
+            const func = functions[functionName];
+            if (!func) return;
+            
+            const detail = document.getElementById('functionDetail');
+            
+            let parametersHtml = '';
+            if (func.parameters && func.parameters.length > 0) {
+                parametersHtml = `
+                    <h3>Parameters</h3>
+                    <table class="parameters-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${func.parameters.map(p => `
+                                <tr>
+                                    <td class="param-name">${p.name}</td>
+                                    <td class="param-type">${p.type}</td>
+                                    <td>${p.description}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+            
+            let notesHtml = '';
+            if (func.notes && func.notes.length > 0) {
+                notesHtml = `
+                    <h3>Notes</h3>
+                    <ul>
+                        ${func.notes.map(note => `<li>${note}</li>`).join('')}
+                    </ul>
+                `;
+            }
+            
+            let seeAlsoHtml = '';
+            if (func.seeAlso && func.seeAlso.length > 0) {
+                seeAlsoHtml = `
+                    <div class="see-also">
+                        <h4>See Also</h4>
+                        ${func.seeAlso.map(fn => `<a href="#" data-function="${fn}">${fn}</a>`).join('')}
+                    </div>
+                `;
+            }
+            
+            detail.innerHTML = `
+                <div class="function-signature">
+                    <code>${func.signature}</code>
+                </div>
+                
+                <h3>Description</h3>
+                <p>${func.description}</p>
+                
+                ${parametersHtml}
+                
+                <h3>Return Value</h3>
+                <p>${func.returnValue}</p>
+                
+                <h3>Example Usage</h3>
+                <div class="example-code">
+                    <pre><code>${func.example}</code></pre>
+                </div>
+                
+                ${notesHtml}
+                ${seeAlsoHtml}
+            `;
+            
+            // Add click handlers for "See Also" links
+            const seeAlsoLinks = detail.querySelectorAll('.see-also a');
+            seeAlsoLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetFunction = this.dataset.function;
+                    
+                    // Update active function in sidebar
+                    const functionItems = document.querySelectorAll('.function-item');
+                    functionItems.forEach(item => {
+                        item.classList.remove('active');
+                        if (item.dataset.function === targetFunction) {
+                            item.classList.add('active');
+                        }
+                    });
+                    
+                    loadFunctionDetail(targetFunction);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
+                <p><strong>`void guLookAt(Mtx view, guVector *cam, guVector *up, guVector *look)`</strong>: Creates a view matrix for a camera.</p>
+                <p><strong>`void guPerspective(Mtx44 proj, f32 fovy, f32 aspect, f32 near, f32 far)`</strong>: Creates a perspective projection matrix.</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

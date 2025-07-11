@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texture Management - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item active">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">Spatial Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="NetworkProgramming.html" class="nav-item">Network Programming</a>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Reference</div>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="UsefulStructs.html" class="nav-item">Data Structures</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="../gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="../gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="../gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="../gx_engine/Lighting.html" class="nav-item">Lighting</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Graphics › Texture Management</nav>
+            </div>
+            <h1>Texture Management</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>Texture management in the Wii GX pipeline involves loading image data into GPU memory, configuring texture objects, and optimizing texture usage for performance. The Hollywood GPU supports various texture formats and advanced features like texture compression and filtering.</p>
+
+                <h2>Texture Formats</h2>
+                <p>Choose the appropriate texture format based on image content and memory constraints:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Format</th>
+                            <th>Bits per Pixel</th>
+                            <th>Use Case</th>
+                            <th>Alpha Support</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>GX_TF_I4</code></td><td>4</td><td>Grayscale textures, heightmaps</td><td>No</td></tr>
+                        <tr><td><code>GX_TF_I8</code></td><td>8</td><td>High-quality grayscale</td><td>No</td></tr>
+                        <tr><td><code>GX_TF_IA4</code></td><td>8</td><td>Low-quality alpha textures</td><td>4-bit</td></tr>
+                        <tr><td><code>GX_TF_IA8</code></td><td>16</td><td>Alpha textures, UI elements</td><td>8-bit</td></tr>
+                        <tr><td><code>GX_TF_RGB565</code></td><td>16</td><td>Opaque color textures</td><td>No</td></tr>
+                        <tr><td><code>GX_TF_RGB5A3</code></td><td>16</td><td>Color with 3-bit alpha</td><td>3-bit</td></tr>
+                        <tr><td><code>GX_TF_RGBA8</code></td><td>32</td><td>High-quality RGBA textures</td><td>8-bit</td></tr>
+                        <tr><td><code>GX_TF_CMPR</code></td><td>4</td><td>Compressed color textures (S3TC/DXT1)</td><td>1-bit</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>Loading Textures</h2>
+                <p>Basic texture loading involves creating a texture object and loading image data:</p>
+
+                <pre><code>// Example: Loading a 64x64 RGB565 texture
+#define TEXTURE_WIDTH  64
+#define TEXTURE_HEIGHT 64
+
+// Texture data (usually loaded from file)
+static u8 texture_data[TEXTURE_WIDTH * TEXTURE_HEIGHT * 2] ATTRIBUTE_ALIGN(32);
+static GXTexObj texture_obj;
+
+void load_texture() {
+    // Initialize texture object
+    GX_InitTexObj(&texture_obj, texture_data, TEXTURE_WIDTH, TEXTURE_HEIGHT, 
+                  GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    
+    // Set texture filtering
+    GX_InitTexObjLOD(&texture_obj, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f, 
+                     GX_FALSE, GX_FALSE, GX_ANISO_1);
+    
+    // Flush cache to ensure GPU can access the data
+    DCFlushRange(texture_data, TEXTURE_WIDTH * TEXTURE_HEIGHT * 2);
+}
+
+void use_texture() {
+    // Load texture into texture map slot 0
+    GX_LoadTexObj(&texture_obj, GX_TEXMAP0);
+    
+    // Configure TEV to use the texture
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    GX_SetTevOp(GX_TEVSTAGE0, GX_MODULATE);
+}</code></pre>
+
+                <h3>Texture Coordinate Setup</h3>
+                <p>Configure vertex format to include texture coordinates:</p>
+                <pre><code>void setup_texture_vertex_format() {
+    // Clear previous vertex description
+    GX_ClearVtxDesc();
+    
+    // Set vertex attributes
+    GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+    
+    // Set vertex formats
+    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+}</code></pre>
+
+                <h2>Texture Filtering and Sampling</h2>
+                
+                <h3>Filter Types</h3>
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Filter</th>
+                            <th>Description</th>
+                            <th>Performance</th>
+                            <th>Quality</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>GX_NEAR</code></td><td>Nearest neighbor (pixelated)</td><td>Fastest</td><td>Low</td></tr>
+                        <tr><td><code>GX_LINEAR</code></td><td>Bilinear interpolation</td><td>Moderate</td><td>Good</td></tr>
+                        <tr><td><code>GX_NEAR_MIP_NEAR</code></td><td>Nearest with mipmaps</td><td>Fast</td><td>Better</td></tr>
+                        <tr><td><code>GX_LIN_MIP_NEAR</code></td><td>Linear with nearest mip</td><td>Moderate</td><td>Good</td></tr>
+                        <tr><td><code>GX_NEAR_MIP_LIN</code></td><td>Nearest with linear mip</td><td>Moderate</td><td>Good</td></tr>
+                        <tr><td><code>GX_LIN_MIP_LIN</code></td><td>Trilinear filtering</td><td>Slowest</td><td>Best</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Advanced Filtering Setup</h3>
+                <pre><code>void setup_texture_filtering(GXTexObj* tex_obj, GXTexFilter min_filter, 
+                             GXTexFilter mag_filter) {
+    // Configure basic filtering
+    GX_InitTexObjLOD(tex_obj, min_filter, mag_filter, 0.0f, 0.0f, 0.0f, 
+                     GX_FALSE, GX_FALSE, GX_ANISO_1);
+    
+    // For high-quality filtering with anisotropic filtering
+    GX_InitTexObjLOD(tex_obj, GX_LIN_MIP_LIN, GX_LINEAR, 0.0f, 0.0f, 0.5f, 
+                     GX_FALSE, GX_TRUE, GX_ANISO_4);
+}</code></pre>
+
+                <h2>Mipmapping</h2>
+                <p>Mipmaps improve texture quality at distance and can enhance performance:</p>
+
+                <pre><code>// Generate mipmap chain
+void generate_mipmaps(void* base_data, u16 width, u16 height, u8 format) {
+    u32 current_size;
+    u32 offset = 0;
+    u16 current_width = width;
+    u16 current_height = height;
+    
+    // Calculate total size needed for mipmap chain
+    u32 total_size = 0;
+    u16 w = width, h = height;
+    while(w >= 1 && h >= 1) {
+        current_size = GX_GetTexBufferSize(w, h, format, GX_FALSE, 0);
+        total_size += current_size;
+        w >>= 1;
+        h >>= 1;
+    }
+    
+    // Allocate memory for all mip levels
+    void* mip_data = memalign(32, total_size);
+    
+    // Initialize texture with mipmaps
+    GX_InitTexObj(&texture_obj, mip_data, width, height, format, 
+                  GX_CLAMP, GX_CLAMP, GX_TRUE);
+                  
+    // Set mipmap filtering
+    GX_InitTexObjLOD(&texture_obj, GX_LIN_MIP_LIN, GX_LINEAR, 
+                     0.0f, (f32)(GX_GetTexBufferSize(width, height, format, GX_TRUE, 0) - 1),
+                     0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+}</code></pre>
+
+                <h2>Texture Compression</h2>
+                <p>S3TC (DXT1) compression reduces memory usage by 75% for RGB textures:</p>
+
+                <pre><code>// Loading compressed texture
+void load_compressed_texture(void* compressed_data, u16 width, u16 height) {
+    // Compressed textures must be multiples of 4 in width and height
+    assert((width % 4) == 0 && (height % 4) == 0);
+    
+    GX_InitTexObj(&compressed_texture, compressed_data, width, height, 
+                  GX_TF_CMPR, GX_CLAMP, GX_CLAMP, GX_FALSE);
+                  
+    // Compressed textures work best with linear filtering
+    GX_InitTexObjLOD(&compressed_texture, GX_LINEAR, GX_LINEAR, 
+                     0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+    
+    // Flush cache
+    u32 tex_size = GX_GetTexBufferSize(width, height, GX_TF_CMPR, GX_FALSE, 0);
+    DCFlushRange(compressed_data, tex_size);
+}</code></pre>
+
+                <h2>Multi-texturing</h2>
+                <p>The Wii supports up to 8 simultaneous textures in the TEV pipeline:</p>
+
+                <pre><code>// Multi-texture setup
+void setup_multitexture() {
+    // Load textures into different texture map slots
+    GX_LoadTexObj(&base_texture, GX_TEXMAP0);
+    GX_LoadTexObj(&detail_texture, GX_TEXMAP1);
+    GX_LoadTexObj(&normal_map, GX_TEXMAP2);
+    
+    // Configure vertex format for multiple texture coordinates
+    GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+    GX_SetVtxDesc(GX_VA_TEX1, GX_DIRECT);
+    GX_SetVtxDesc(GX_VA_TEX2, GX_DIRECT);
+    
+    // Configure TEV stages for each texture
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
+    
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR_NULL);
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}</code></pre>
+
+                <h2>Texture Memory Management</h2>
+                <p>Efficient texture memory usage is crucial for performance:</p>
+
+                <pre><code>// Texture memory pool
+#define MAX_TEXTURES 64
+#define TEXTURE_POOL_SIZE (4 * 1024 * 1024) // 4MB
+
+typedef struct {
+    void* data;
+    u32 size;
+    bool in_use;
+} TextureSlot;
+
+static u8* texture_pool;
+static TextureSlot texture_slots[MAX_TEXTURES];
+static u32 pool_offset;
+
+void init_texture_pool() {
+    texture_pool = (u8*)memalign(32, TEXTURE_POOL_SIZE);
+    pool_offset = 0;
+    
+    for(int i = 0; i < MAX_TEXTURES; i++) {
+        texture_slots[i].in_use = false;
+    }
+}
+
+int allocate_texture_slot(u32 size) {
+    // Align size to 32-byte boundary
+    size = (size + 31) & ~31;
+    
+    if(pool_offset + size > TEXTURE_POOL_SIZE) {
+        return -1; // Out of memory
+    }
+    
+    for(int i = 0; i < MAX_TEXTURES; i++) {
+        if(!texture_slots[i].in_use) {
+            texture_slots[i].data = texture_pool + pool_offset;
+            texture_slots[i].size = size;
+            texture_slots[i].in_use = true;
+            pool_offset += size;
+            return i;
+        }
+    }
+    
+    return -1; // No free slots
+}
+
+void free_texture_slot(int slot_id) {
+    if(slot_id >= 0 && slot_id < MAX_TEXTURES) {
+        texture_slots[slot_id].in_use = false;
+        // Note: This simple allocator doesn't defragment
+        // Consider implementing a more sophisticated allocator for production use
+    }
+}</code></pre>
+
+                <h2>Performance Optimization</h2>
+                
+                <h3>Texture Streaming</h3>
+                <p>For large textures, implement streaming to manage memory usage:</p>
+                <pre><code>typedef struct {
+    GXTexObj low_res;
+    GXTexObj high_res;
+    bool high_res_loaded;
+    f32 distance_threshold;
+} StreamedTexture;
+
+void update_streamed_texture(StreamedTexture* tex, f32 distance) {
+    if(distance < tex->distance_threshold && !tex->high_res_loaded) {
+        // Load high-resolution version
+        load_high_res_texture(tex);
+        tex->high_res_loaded = true;
+    } else if(distance >= tex->distance_threshold && tex->high_res_loaded) {
+        // Unload high-resolution version to save memory
+        unload_high_res_texture(tex);
+        tex->high_res_loaded = false;
+    }
+    
+    // Use appropriate texture
+    if(tex->high_res_loaded) {
+        GX_LoadTexObj(&tex->high_res, GX_TEXMAP0);
+    } else {
+        GX_LoadTexObj(&tex->low_res, GX_TEXMAP0);
+    }
+}</code></pre>
+
+                <h3>Texture Atlasing</h3>
+                <p>Combine multiple small textures into texture atlases to reduce state changes:</p>
+                <pre><code>typedef struct {
+    f32 u_min, v_min;    // UV coordinates of sub-texture
+    f32 u_max, v_max;
+    u16 width, height;   // Original dimensions
+} AtlasRegion;
+
+void draw_atlas_quad(AtlasRegion* region, f32 x, f32 y, f32 w, f32 h) {
+    GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
+        GX_Position3f32(x, y, 0);
+        GX_TexCoord2f32(region->u_min, region->v_min);
+        
+        GX_Position3f32(x + w, y, 0);
+        GX_TexCoord2f32(region->u_max, region->v_min);
+        
+        GX_Position3f32(x + w, y + h, 0);
+        GX_TexCoord2f32(region->u_max, region->v_max);
+        
+        GX_Position3f32(x, y + h, 0);
+        GX_TexCoord2f32(region->u_min, region->v_max);
+    GX_End();
+}</code></pre>
+
+                <div class="info-box">
+                    <h4>Texture Best Practices</h4>
+                    <ul>
+                        <li>Use power-of-two dimensions for better performance</li>
+                        <li>Choose the smallest format that meets quality requirements</li>
+                        <li>Enable mipmapping for textures viewed at varying distances</li>
+                        <li>Use texture compression (S3TC) for color textures when possible</li>
+                        <li>Batch draw calls by texture to minimize state changes</li>
+                        <li>Align texture data to 32-byte boundaries for optimal cache performance</li>
+                        <li>Use texture atlases to reduce the number of texture objects</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="Shaders.html">TEV Shaders</a> - Using textures in the TEV pipeline</li>
+                        <li><a href="Performance.html">Performance Optimization</a> - Texture performance tips</li>
+                        <li><a href="../gx_engine/Textures.html">GX Texture Implementation</a> - Low-level texture details</li>
+                        <li><a href="MemoryManagement.html">Memory Management</a> - Efficient texture memory usage</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+                <li><strong><code>GX_TF_CMPR</code></strong>: A compressed format (S3TC/DXT1). This is one of the most important formats, as it offers a 4:1 compression ratio with good quality, saving a huge amount of memory. Most of your large, opaque textures should use this format.</li>
+            </ul>
+            <p>
+                Texture data is typically stored in `.tpl` files, which can contain multiple textures and their mipmaps. You would usually use a tool like `wimgt` to convert standard image files (like PNG) into TPLs.
+            </p>
+
+            <h2>Loading a Texture</h2>
+            <p>
+                The process of using a texture involves two main steps: initializing a texture object and then loading that object into a texture map slot that the TEV pipeline can use.
+            </p>
+            <ol>
+                <li>
+                    <strong>`GX_InitTexObj(...)`</strong>: This function configures a `GXTexObj` struct. You tell it where the texture data is in memory, its dimensions, its format, and how it should behave (e.g., repeat or clamp at the edges).
+                </li>
+                <li>
+                    <strong>`GX_LoadTexObj(...)`</strong>: This function takes the configured `GXTexObj` and loads it into a specific hardware texture map slot (e.g., `GX_TEXMAP0`). This slot is then referenced by `GX_SetTevOrder` to be used in a TEV stage.
+                </li>
+            </ol>
+
+            <h3>Example: Loading a Texture from Memory</h3>
+            <pre><code class="c">
+#include &lt;ogc/gx.h&gt;
+
+// Assume 'my_texture_data' is a pointer to raw texture data (e.g., from a TPL file)
+// that you have already loaded into main memory.
+// This data MUST be 32-byte aligned.
+// void* my_texture_data;
+// u16 texture_width, texture_height;
+
+void load_my_texture() {
+    GXTexObj texture_object; // The C struct that will hold texture info
+
+    // 1. Initialize the texture object
+    GX_InitTexObj(
+        &texture_object,      // Pointer to the object to initialize
+        my_texture_data,      // Pointer to the raw image data in memory
+        texture_width,        // Width of the texture
+        texture_height,       // Height of the texture
+        GX_TF_CMPR,           // The format of the texture (e.g., compressed)
+        GX_REPEAT,            // Wrap mode for the U (horizontal) coordinate
+        GX_REPEAT,            // Wrap mode for the V (vertical) coordinate
+        GX_FALSE              // Mipmapping disabled for this example
+    );
+
+    // (Optional) Set other properties like filtering
+    GX_InitTexObjLOD(&texture_object, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+
+    // 2. Load the configured texture object into a hardware slot.
+    // We are loading it into slot 0. The TEV stage will refer to this ID.
+    GX_LoadTexObj(&texture_object, GX_TEXMAP0);
+}
+            </code></pre>
+            <p>
+                Once the texture is loaded into a `TEXMAP` slot, it can be used by the TEV stages for rendering. You would typically call this loading code once during initialization, not every frame.
+            </p>
+        </main>
+    </div>
+</body>
+</html>

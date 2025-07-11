@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rendering - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item active">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; Rendering Pipeline</nav>
+            </div>
+            <h1>The Rendering Pipeline</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>
+                Getting anything to appear on the screen with GX requires a specific sequence of initialization steps. This guide walks through the fundamental process of setting up the video mode, initializing the GX graphics engine, and creating a main loop to draw frames.
+            </p>
+
+            <h2>1. Video and Framebuffer Initialization</h2>
+            <p>
+                Before you can draw, you need to tell the Wii how to display video and allocate memory for the image that will be sent to the screen. This memory is called the <strong>framebuffer</strong>.
+            </p>
+            <p>
+                The standard process is:
+            </p>
+            <ol>
+                <li>Initialize the video system with `VIDEO_Init()`.</li>
+                <li>Get the preferred video mode for the connected display using `VIDEO_GetPreferredMode(NULL)`.</li>
+                <li>Allocate memory for the framebuffer using `SYS_AllocateFramebuffer()`. It's common to allocate two framebuffers for "double buffering", which prevents screen tearing.</li>
+                <li>Configure the video hardware with the chosen mode using `VIDEO_Configure()`.</li>
+                <li>Tell the video interface which framebuffer to display next with `VIDEO_SetNextFramebuffer()`.</li>
+                <li>Finally, make the screen visible with `VIDEO_SetBlack(FALSE)`, `VIDEO_Flush()`, and `VIDEO_WaitVSync()`.</li>
+            </ol>
+
+            <h2>2. GX Engine Initialization</h2>
+            <p>
+                With the video system ready, you can initialize the GX graphics engine itself.
+            </p>
+            <p>
+                The core steps are:
+            </p>
+            <ol>
+                <li>Create a FIFO (First-In, First-Out) buffer. This is a block of memory that the CPU uses to send commands to the GPU.</li>
+                <li>Initialize GX with `GX_Init()`, passing it the FIFO buffer.</li>
+                <li>Set the clear color (the "background" color) and Z-buffer depth with `GX_SetCopyClear()`.</li>
+                <li>Define the <strong>viewport</strong>, which maps your 3D scene coordinates to the 2D screen space, using `GX_SetViewport()`.</li>
+                <li>Set up the Y-scale for the framebuffer copy operation with `GX_SetDispCopyYScale()`.</li>
+                <li>Define the source and destination for the framebuffer copy, which is how the final rendered image gets from the GPU's internal buffer (the EFB) to the main framebuffer (the XFB) that gets sent to the TV.</li>
+            </ol>
+
+            <h2>3. The Main Render Loop</h2>
+            <p>
+                The render loop is the heart of your application. It's a `while(1)` loop that continuously updates and redraws the screen.
+            </p>
+            <p>A basic render loop does the following every frame:</p>
+            <ol>
+                <li>Set up the camera and projection matrices (covered in the Matrices section).</li>
+                <li>Draw your scene using primitive commands like `GX_Begin()` / `GX_End()`.</li>
+                <li>Tell GX you are done drawing the scene for this frame.</li>
+                <li>Copy the rendered image from the Embedded Framebuffer (EFB) to the external framebuffer (XFB) in main memory using `GX_CopyDisp()`.</li>
+                <li>Signal that all drawing is finished with `GX_DrawDone()`.</li>
+                <li>Make the newly drawn framebuffer visible on the screen.</li>
+                <li>Wait for the vertical sync (`VIDEO_WaitVSync()`) to cap the framerate and prevent tearing.</li>
+            </ol>
+
+            <h3>Complete Example: Rendering a Blue Screen</h3>
+            <p>This code puts all the pieces together to initialize the system and render a solid blue screen. It is the "Hello, World!" of Wii graphics programming.</p>
+            <pre><code class="c">
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;malloc.h&gt;
+#include &lt;ogc/video.h&gt;
+#include &lt;ogc/systems.h&gt;
+#include &lt;ogc/gx.h&gt;
+#include &lt;ogc/pad.h&gt;
+
+#define DEFAULT_FIFO_SIZE (256 * 1024)
+
+static void *frame_buffer[2] = { NULL, NULL };
+GXRModeObj *rmode;
+
+int main(int argc, char **argv) {
+    void *gp_fifo = NULL;
+
+    // 1. Video Initialization
+    VIDEO_Init();
+    rmode = VIDEO_GetPreferredMode(NULL);
+    
+    // Allocate framebuffers
+    frame_buffer[0] = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+    frame_buffer[1] = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+
+    VIDEO_Configure(rmode);
+    VIDEO_SetNextFramebuffer(frame_buffer[0]);
+    VIDEO_SetBlack(FALSE);
+    VIDEO_Flush();
+    VIDEO_WaitVSync();
+    if (rmode->viTVMode & VI_NON_INTERLACE) VIDEO_WaitVSync();
+
+    // Initialize PAD library
+    PAD_Init();
+
+    // 2. GX Initialization
+    gp_fifo = memalign(32, DEFAULT_FIFO_SIZE);
+    memset(gp_fifo, 0, DEFAULT_FIFO_SIZE);
+    GX_Init(gp_fifo, DEFAULT_FIFO_SIZE);
+
+    // Set a blue background clear color
+    GXColor background = { 0, 0, 200, 255 };
+    GX_SetCopyClear(background, 0x00ffffff);
+
+    // Set viewport and other copy settings
+    GX_SetViewport(0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
+    f32 yscale = GX_GetYScaleFactor(rmode->efbHeight, rmode->xfbHeight);
+    u32 xfbHeight = GX_SetDispCopyYScale(yscale);
+    GX_SetDispCopySrc(0, 0, rmode->fbWidth, rmode->efbHeight);
+    GX_SetDispCopyDst(rmode->fbWidth, xfbHeight);
+    GX_SetCopyFilter(rmode->aa, rmode->sample_pattern, GX_TRUE, rmode->vfilter);
+    GX_SetFieldMode(rmode->field_rendering, ((rmode->viHeight == 2 * rmode->xfbHeight) ? GX_ENABLE : GX_DISABLE));
+    
+    GX_SetCullMode(GX_CULL_NONE);
+    GX_SetDispCopyGamma(GX_GM_1_0);
+
+    // Dummy projection matrix
+    Mtx44 p;
+    guPerspective(p, 45, (f32)rmode->fbWidth / (f32)rmode->efbHeight, 0.1f, 300.0f);
+    GX_LoadProjectionMtx(p, GX_PERSPECTIVE);
+
+    u8 fbi = 0; // Frame buffer index
+
+    // 3. Main Render Loop
+    while (1) {
+        PAD_ScanPads();
+        if (PAD_ButtonsDown(0) & PAD_BUTTON_START) {
+            exit(0);
+        }
+
+        // Set a dummy ModelView matrix
+        Mtx view;
+        guVector cam = {0.0F, 0.0F, 0.0F},
+                 up = {0.0F, 1.0F, 0.0F},
+                 look = {0.0F, 0.0F, -1.0F};
+        guLookAt(view, &cam, &up, &look);
+        GX_LoadPosMtxImm(view, GX_PNMTX0);
+
+        // No drawing commands needed for a clear screen
+
+        // Copy EFB to XFB
+        GX_SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+        GX_SetColorUpdate(GX_TRUE);
+        GX_CopyDisp(frame_buffer[fbi], GX_TRUE);
+
+        GX_DrawDone();
+
+        // Make the new frame visible
+        VIDEO_SetNextFramebuffer(frame_buffer[fbi]);
+        VIDEO_Flush();
+        VIDEO_WaitVSync();
+        fbi ^= 1; // Flip frame buffer
+    }
+
+    return 0;
+}
+            </code></pre>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

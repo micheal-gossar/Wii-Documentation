@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Spatial Audio - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="HardwareShaders.html" class="nav-item">Hardware Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item active">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+                <a href="About.html" class="nav-item">About</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Audio › 3D Spatial Audio</nav>
+            </div>
+            <h1>3D Spatial Audio</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+            <p>Transcend stereo. With the Wii's DSP, you can position sounds in a full 3D space, creating immersive auditory landscapes that react to gameplay.</p>
+            
+            <h2>Core Concepts: The Audio Mixer (ASND)</h2>
+            <p>The magic of 3D audio is handled by the <code>asndlib</code> library, which provides a high-level interface to the powerful onboard DSP. You don't manipulate waveforms directly; you command the mixer, and it orchestrates the symphony.</p>
+            <ul>
+                <li><strong>Voices:</strong> A voice is a single channel of audio playback. The Wii supports a large number of simultaneous voices.</li>
+                <li><strong>Listener:</strong> You define a virtual "listener" in your 3D world, typically attached to the camera, with its own position and orientation.</li>
+                <li><strong>Emitters:</strong> Each sound source is an emitter, with a position in 3D space. <code>asndlib</code> automatically calculates panning and volume based on the emitter's position relative to the listener.</li>
+            </ul>
+            <pre><code>
+#include &lt;asndlib.h&gt;
+#include &lt;gccore.h&gt;
+
+// Assume my_sound_pcm is a pointer to raw PCM audio data
+// and my_sound_len is its length in bytes.
+
+// Initialize the sound library
+ASND_Init();
+
+// Play a sound normally (non-3D)
+ASND_PostVoice(ASND_VOICE_MONO_16BIT, my_sound_pcm, my_sound_len);
+
+// --- 3D Sound Example ---
+
+// A sound source's position in the world
+guVector sound_pos = {100.0f, 0.0f, 0.0f};
+
+// The listener's (camera's) position and orientation
+guVector cam_pos = {0.0f, 0.0f, 0.0f};
+guVector cam_up = {0.0f, 1.0f, 0.0f};
+guVector cam_look = {0.0f, 0.0f, -1.0f};
+
+// Update the listener's position every frame
+void UpdateListener(guVector pos, guVector up, guVector look) {
+    ASND_SetListener(pos.x, pos.y, pos.z, up.x, up.y, up.z, look.x, look.y, look.z);
+}
+
+// Play a sound from a specific 3D position
+void PlaySoundAt(guVector pos, void* pcm_data, u32 len) {
+    // The last 3 parameters are for velocity, which we ignore here
+    ASND_Post3DVoice(ASND_VOICE_MONO_16BIT, pcm_data, len, pos.x, pos.y, pos.z, 0, 0, 0);
+}
+
+// In your main loop:
+while(1) {
+    // Update camera position based on input, etc.
+    // ...
+
+    // Update the audio listener to match the camera
+    UpdateListener(cam_pos, cam_up, cam_look);
+
+    // If a button is pressed, play a sound effect from a fixed position
+    if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
+        PlaySoundAt(sound_pos, my_sound_pcm, my_sound_len);
+    }                VIDEO_WaitVSync();
+            }
+                        </code></pre>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="AudioProcessing.html">Audio Processing</a> - Core audio system setup</li>
+                        <li><a href="AudioStreaming.html">Audio Streaming</a> - Streaming audio techniques</li>
+                        <li><a href="Performance.html">Performance</a> - Audio performance optimization</li>
+                    </ul>
+                </div>
+            </section>
+            <section class="page-content">
+                <h2>Advanced 3D Audio Techniques</h2>
+                
+                <h3>Distance-Based Attenuation</h3>
+                <p>Implement realistic audio falloff based on distance:</p>
+                <pre><code>// Custom distance attenuation model
+float calculate_volume_with_distance(guVector listener_pos, guVector sound_pos, 
+                                    float max_distance, float rolloff_factor) {
+    // Calculate distance
+    float dx = sound_pos.x - listener_pos.x;
+    float dy = sound_pos.y - listener_pos.y;  
+    float dz = sound_pos.z - listener_pos.z;
+    float distance = sqrt(dx*dx + dy*dy + dz*dz);
+    
+    if (distance >= max_distance) {
+        return 0.0f; // Silent beyond max distance
+    }
+    
+    // Linear attenuation
+    float linear_factor = 1.0f - (distance / max_distance);
+    
+    // Apply rolloff curve (exponential)
+    float volume = pow(linear_factor, rolloff_factor);
+    
+    return CLAMP(volume, 0.0f, 1.0f);
+}
+
+// Enhanced 3D voice with distance
+void PlaySoundAtWithAttenuation(guVector pos, void* pcm_data, u32 len, 
+                               guVector listener_pos, float max_dist) {
+    float volume = calculate_volume_with_distance(listener_pos, pos, max_dist, 2.0f);
+    
+    if (volume > 0.01f) { // Only play if audible
+        ASND_Post3DVoice(ASND_VOICE_MONO_16BIT, pcm_data, len, 
+                        pos.x, pos.y, pos.z, 0, 0, 0);
+        ASND_ChangeVolumeVoice(ASND_GetFirstUnusedVoice(), 
+                              (int)(volume * 255), (int)(volume * 255));
+    }
+}</code></pre>
+
+                <h3>Doppler Effect Implementation</h3>
+                <p>Add realistic Doppler shifts for moving sound sources:</p>
+                <pre><code>typedef struct {
+    guVector position;
+    guVector last_position;
+    guVector velocity;
+    float doppler_factor;
+    u32 base_frequency;
+    u32 current_frequency;
+} MovingSoundSource;
+
+void update_doppler_effect(MovingSoundSource* source, guVector listener_pos, 
+                          guVector listener_velocity, float speed_of_sound) {
+    // Calculate relative velocity
+    guVector relative_pos;
+    relative_pos.x = source->position.x - listener_pos.x;
+    relative_pos.y = source->position.y - listener_pos.y;
+    relative_pos.z = source->position.z - listener_pos.z;
+    
+    float distance = sqrt(relative_pos.x*relative_pos.x + 
+                         relative_pos.y*relative_pos.y + 
+                         relative_pos.z*relative_pos.z);
+    
+    if (distance > 0.0f) {
+        // Normalize direction vector
+        relative_pos.x /= distance;
+        relative_pos.y /= distance;
+        relative_pos.z /= distance;
+        
+        // Calculate velocity component toward listener
+        float source_velocity_radial = 
+            source->velocity.x * relative_pos.x +
+            source->velocity.y * relative_pos.y +
+            source->velocity.z * relative_pos.z;
+            
+        float listener_velocity_radial =
+            listener_velocity.x * relative_pos.x +
+            listener_velocity.y * relative_pos.y +
+            listener_velocity.z * relative_pos.z;
+        
+        // Doppler frequency shift
+        float doppler_ratio = (speed_of_sound + listener_velocity_radial) /
+                             (speed_of_sound + source_velocity_radial);
+        
+        source->current_frequency = (u32)(source->base_frequency * doppler_ratio);
+        
+        // Clamp to reasonable range
+        source->current_frequency = CLAMP(source->current_frequency, 
+                                        source->base_frequency / 2,
+                                        source->base_frequency * 2);
+    }
+}
+
+// Apply Doppler effect to playing voice
+void apply_doppler_to_voice(int voice_id, MovingSoundSource* source) {
+    // This would require low-level audio resampling
+    // Implementation depends on audio library capabilities
+    float pitch_ratio = (float)source->current_frequency / source->base_frequency;
+    ASND_ChangePitchVoice(voice_id, (int)(pitch_ratio * 48000));
+}</code></pre>
+
+                <h3>Multi-Channel Surround Sound</h3>
+                <p>Create immersive surround sound effects:</p>
+                <pre><code>typedef enum {
+    CHANNEL_FRONT_LEFT = 0,
+    CHANNEL_FRONT_RIGHT,
+    CHANNEL_REAR_LEFT,
+    CHANNEL_REAR_RIGHT,
+    CHANNEL_CENTER,
+    CHANNEL_LFE,
+    MAX_CHANNELS
+} AudioChannel;
+
+typedef struct {
+    float volumes[MAX_CHANNELS];
+    float delays[MAX_CHANNELS];  // In samples
+    bool active[MAX_CHANNELS];
+} SurroundMix;
+
+void calculate_surround_mix(guVector sound_pos, guVector listener_pos, 
+                           guVector listener_forward, guVector listener_up,
+                           SurroundMix* mix) {
+    // Calculate relative position in listener space
+    guVector relative;
+    relative.x = sound_pos.x - listener_pos.x;
+    relative.y = sound_pos.y - listener_pos.y;
+    relative.z = sound_pos.z - listener_pos.z;
+    
+    // Calculate listener's right vector
+    guVector right;
+    guVecCross(&listener_up, &listener_forward, &right);
+    guVecNormalize(&right);
+    
+    // Transform to listener coordinate system
+    float x = guVecDotProduct(&relative, &right);      // Left/Right
+    float y = guVecDotProduct(&relative, &listener_up); // Up/Down
+    float z = guVecDotProduct(&relative, &listener_forward); // Front/Back
+    
+    // Calculate surround channel volumes
+    float front_bias = (z > 0) ? 1.0f : 0.3f;  // Sounds behind are quieter
+    float left_bias = (x < 0) ? 1.0f : 0.0f;
+    float right_bias = (x > 0) ? 1.0f : 0.0f;
+    
+    // Front channels
+    mix->volumes[CHANNEL_FRONT_LEFT] = front_bias * left_bias;
+    mix->volumes[CHANNEL_FRONT_RIGHT] = front_bias * right_bias;
+    
+    // Rear channels (for sounds behind listener)
+    float rear_bias = (z < 0) ? 1.0f : 0.2f;
+    mix->volumes[CHANNEL_REAR_LEFT] = rear_bias * left_bias;
+    mix->volumes[CHANNEL_REAR_RIGHT] = rear_bias * right_bias;
+    
+    // Center channel for focused sounds
+    mix->volumes[CHANNEL_CENTER] = (fabs(x) < 0.2f) ? 0.7f : 0.0f;
+    
+    // LFE for low frequency content
+    mix->volumes[CHANNEL_LFE] = 0.3f; // Constant bass
+    
+    // Calculate delay for each channel (HRTF simulation)
+    float head_radius = 0.1f; // Approximate head size
+    for (int i = 0; i < MAX_CHANNELS; i++) {
+        if (mix->volumes[i] > 0.01f) {
+            // Simple delay model based on channel position
+            mix->delays[i] = calculate_channel_delay(i, x, y, z, head_radius);
+            mix->active[i] = true;
+        } else {
+            mix->active[i] = false;
+        }
+    }
+}
+
+void play_surround_sound(void* pcm_data, u32 len, SurroundMix* mix) {
+    for (int channel = 0; channel < MAX_CHANNELS; channel++) {
+        if (mix->active[channel]) {
+            // Create delayed and volume-adjusted version
+            void* channel_data = create_delayed_audio(pcm_data, len, 
+                                                     mix->delays[channel],
+                                                     mix->volumes[channel]);
+            
+            // Play on appropriate speaker
+            ASND_PostVoice(ASND_VOICE_MONO_16BIT, channel_data, len);
+        }
+    }
+}</code></pre>
+
+                <h3>Environmental Audio Effects</h3>
+                <p>Simulate realistic environmental acoustics:</p>
+                <pre><code>typedef struct {
+    float reverb_time;     // RT60 in seconds
+    float early_delay;     // Early reflection delay
+    float early_gain;      // Early reflection volume
+    float late_gain;       // Late reverb volume
+    float diffusion;       // Reverb diffusion
+    float dampening;       // High frequency dampening
+} ReverbParameters;
+
+// Predefined environment presets
+const ReverbParameters ENVIRONMENT_PRESETS[] = {
+    // Cathedral
+    {4.5f, 0.08f, 0.4f, 0.7f, 0.9f, 0.3f},
+    // Concert Hall  
+    {2.8f, 0.05f, 0.3f, 0.6f, 0.8f, 0.2f},
+    // Small Room
+    {0.8f, 0.02f, 0.2f, 0.3f, 0.5f, 0.6f},
+    // Outdoor
+    {0.1f, 0.01f, 0.1f, 0.05f, 0.2f, 0.8f},
+    // Underground Cave
+    {6.0f, 0.12f, 0.5f, 0.8f, 0.95f, 0.1f}
+};
+
+void apply_environmental_reverb(int voice_id, ReverbParameters* params) {
+    // This is a simplified example - real implementation would use
+    // convolution reverb or algorithmic reverb
+    
+    // Apply early reflections
+    ASND_SetVoiceDelay(voice_id, (int)(params->early_delay * 48000));
+    ASND_SetVoiceGain(voice_id, params->early_gain);
+    
+    // Apply late reverb (would need reverb DSP)
+    apply_reverb_dsp(voice_id, params);
+}
+
+// Distance-based environmental filtering
+void apply_distance_filtering(int voice_id, float distance) {
+    // Air absorption - high frequencies attenuate faster
+    float high_freq_loss = distance * 0.01f; // 1% per unit distance
+    float filter_cutoff = 20000.0f * (1.0f - high_freq_loss);
+    
+    // Apply low-pass filter
+    ASND_SetVoiceLowPass(voice_id, CLAMP(filter_cutoff, 1000.0f, 20000.0f));
+    
+    // Add subtle reverb for distant sounds
+    if (distance > 50.0f) {
+        ReverbParameters distant_reverb = {1.5f, 0.05f, 0.2f, 0.4f, 0.7f, 0.5f};
+        apply_environmental_reverb(voice_id, &distant_reverb);
+    }
+}</code></pre>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="AudioProcessing.html">Audio Processing</a> - Core audio system setup</li>
+                        <li><a href="AudioStreaming.html">Audio Streaming</a> - Streaming audio techniques</li>
+                        <li><a href="Performance.html">Performance</a> - Audio performance optimization</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | AI-Generated Content | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

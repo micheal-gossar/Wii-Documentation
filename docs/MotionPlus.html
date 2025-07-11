@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotionPlus - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+        <a href="Miis.html" class="nav-item">Mii Integration</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Wii MotionPlus</h1>
+      <p class="intro">The Wii MotionPlus is an extension that adds a high-precision, multi-axis gyroscope to the Wiimote, allowing for true 1:1 motion tracking of the player's rotational movements. It measures rotational velocity along the three primary axes: pitch (up/down tilt), yaw (left/right turn), and roll (rotation along the controller's pointing axis).</p>
+      <p>The MotionPlus can be found as a small add-on dongle or built directly into newer Wiimotes (branded as <strong>Wii Remote Plus</strong>). From a programming perspective, both are handled identically.</p>
+
+      <section id="enabling">
+        <h2>Detection and Activation</h2>
+        <p>Using the MotionPlus is a two-stage process. First, it must be detected when connected, and then it must be explicitly activated. This is typically handled using an expansion callback.</p>
+        <pre><code class="language-cpp">// In your expansion callback
+void expansion_callback(s32 chan, s32 type) {
+    switch(type) {
+        case WPAD_EXP_MOTIONPLUS:
+            // MotionPlus detected, now activate it.
+            printf("MotionPlus detected on channel %d, activating...\n", chan);
+            WPAD_ActivateMotionPlus(chan);
+            break;
+        
+        default:
+            // Any other state means the MotionPlus is not active or was disconnected.
+            printf("MotionPlus disconnected or other expansion.\n");
+            WPAD_DeactivateMotionPlus(chan);
+            break;
+    }
+}
+
+// In your initialization code
+WPAD_SetExpansionCallback(expansion_callback);
+</code></pre>
+      </section>
+
+      <section id="reading-data">
+        <h2>Reading Gyroscope Data</h2>
+        <p>Once activated, MotionPlus data is accessed through the <code>exp.mp</code> member of the <code>WPADData</code> struct. The core data is the <code>gyro_t</code> struct, which reports <strong>angular velocity</strong> (degrees per second), not a final angle. To get a usable orientation, you must integrate this velocity over time.</p>
+        <pre><code class="language-cpp">// Global variables to store the current orientation
+static float g_pitch = 0.0f;
+static float g_yaw = 0.0f;
+static float g_roll = 0.0f;
+
+// In your main loop
+void UpdateInput() {
+    WPAD_ScanPads();
+    WPADData* wpad_data = WPAD_Data(WPAD_CHAN_0);
+
+    // Check if the active expansion is a MotionPlus
+    if (wpad_data->exp.type == WPAD_EXP_MOTIONPLUS || wpad_data->exp.type == WPAD_EXP_MPLUS_NUNCHUK) {
+        gyro_t* gyro = &wpad_data->exp.mp.gyro;
+
+        // Get the time delta since the last frame (very important!)
+        // For simplicity, we assume 60 FPS. A real app should calculate this.
+        const float delta_time = 1.0f / 60.0f; 
+
+        // Only integrate if the controller is moving to prevent drift.
+        if (!gyro->slow) {
+            g_pitch += gyro->pitch * delta_time;
+            g_yaw   += gyro->yaw * delta_time;
+            g_roll  += gyro->roll * delta_time;
+        }
+    }
+}
+</code></pre>
+      </section>
+
+      <section id="calibration-and-drift">
+        <h2>Calibration and Drift</h2>
+        <p>Gyroscopes inherently suffer from <strong>drift</strong>, where small errors accumulate over time. libogc provides features to combat this:</p>
+        <ul>
+          <li><strong>The `gyro.slow` Flag:</strong> The `gyro_t` struct contains a `slow` flag. When the controller is held still, this flag becomes true. You should only integrate the gyro data when this flag is false to prevent drift.</li>
+          <li><strong>Initial Calibration:</strong> When <code>WPAD_ActivateMotionPlus</code> is called, an initial calibration occurs. The controller should be on a flat, stable surface for best results.</li>
+          <li><strong>Manual Recalibration:</strong> You can trigger a recalibration anytime by calling <code>WPAD_MotionPlusCalibrate(chan)</code>.</li>
+        </ul>
+      </section>
+
+      <section id="passthrough-mode">
+        <h2>Nunchuk Passthrough Mode</h2>
+        <p>When a Nunchuk is connected through a MotionPlus dongle, the expansion type changes to <code>WPAD_EXP_MPLUS_NUNCHUK</code>. The data for both devices is then available in the <code>exp.mp_nunchuk</code> struct.</p>
+        <pre><code class="language-cpp">void CheckNunchukPassthrough() {
+    WPADData* wpad_data = WPAD_Data(WPAD_CHAN_0);
+
+    if (wpad_data->exp.type == WPAD_EXP_MPLUS_NUNCHUK) {
+        // Access gyro data (same as before)
+        gyro_t* gyro = &wpad_data->exp.mp_nunchuk.gyro;
+        
+        // Access Nunchuk data
+        joystick_t* stick = &wpad_data->exp.mp_nunchuk.nck.js;
+        if (stick->mag > 0.15f) {
+            // Use Nunchuk stick
+        }
+
+        // Check Nunchuk buttons
+        u32 pressed = WPAD_ButtonsDown(0);
+        if (pressed & WPAD_NUNCHUK_BUTTON_Z) {
+            // Z button was pressed
+        }
+    }
+}
+</code></pre>
+      </section>
+
+      <section id="function-reference">
+        <h2>Function Reference</h2>
+        <dl>
+          <dt><code>void WPAD_ActivateMotionPlus(s32 chan)</code></dt>
+          <dd>Initializes and activates the MotionPlus gyroscope on the specified channel.</dd>
+
+          <dt><code>void WPAD_DeactivateMotionPlus(s32 chan)</code></dt>
+          <dd>Deactivates the MotionPlus on the specified channel.</dd>
+
+          <dt><code>void WPAD_MotionPlusCalibrate(s32 chan)</code></dt>
+          <dd>Initiates a recalibration of the gyroscope. The controller should be held still.</dd>
+        </dl>
+      </section>
+    </main>
+  </div>
+  <script src="../scripts.js"></script>
+</body>
+</html>

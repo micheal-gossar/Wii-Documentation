@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Rendering - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item active">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Graphics › Advanced Rendering</nav>
+            </div>
+            <h1>Advanced Rendering Techniques</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>Advanced rendering techniques push the limits of the Nintendo Wii's Hollywood GPU to achieve sophisticated visual effects. This guide covers shadow mapping, post-processing effects, advanced lighting models, and optimization strategies for complex scenes.</p>
+                <li>Disable 3D rendering (e.g., turn off depth testing with `GX_SetZMode(GX_FALSE, ...)`).</li>
+                <li>Set up an orthographic projection matrix for 2D drawing.</li>
+                <li>Draw a full-screen quad, applying the texture you just created. In this "post-processing" pass, you can use the TEV stages to manipulate the texture's color, creating your desired effect.</li>
+            </ol>
+
+            <h3>Example: Simple Grayscale Post-Processing Effect</h3>
+            <pre><code class="c">
+#include &lt;ogc/gx.h&gt;
+#include &lt;malloc.h&gt;
+
+                <h2>Shadow Mapping</h2>
+                <p>Implement dynamic shadows using depth textures and multiple rendering passes:</p>
+
+                <h3>Shadow Map Setup</h3>
+                <pre><code>#define SHADOW_MAP_SIZE 512
+
+static GXTexObj shadow_map;
+static u8* shadow_buffer;
+static GXRModeObj shadow_mode;
+
+void init_shadow_mapping() {
+    // Allocate shadow map buffer
+    u32 shadow_size = SHADOW_MAP_SIZE * SHADOW_MAP_SIZE * 2; // 16-bit depth
+    shadow_buffer = (u8*)memalign(32, shadow_size);
+    
+    // Initialize shadow map texture
+    GX_InitTexObj(&shadow_map, shadow_buffer, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE,
+                  GX_TF_Z16, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    
+    // Setup shadow map rendering mode
+    shadow_mode = *VIDEO_GetPreferredMode(NULL);
+    shadow_mode.fbWidth = SHADOW_MAP_SIZE;
+    shadow_mode.efbHeight = SHADOW_MAP_SIZE;
+    shadow_mode.xfbHeight = SHADOW_MAP_SIZE;
+    
+    // Configure depth comparison
+    GX_SetZTexture(GX_ZT_REPLACE, GX_TF_Z16, 0);
+}</code></pre>
+
+                <h3>Shadow Map Rendering</h3>
+                <pre><code>void render_shadow_map(Scene* scene, Light* light) {
+    // Setup light's view matrix
+    Mtx light_view;
+    guVector light_pos = {light->position.x, light->position.y, light->position.z};
+    guVector light_target = {0, 0, 0}; // Look at scene center
+    guVector up = {0, 1, 0};
+    guLookAt(light_view, &light_pos, &up, &light_target);
+    
+    // Setup light's projection matrix
+    Mtx44 light_proj;
+    guPerspective(light_proj, 45.0f, 1.0f, 1.0f, 100.0f);
+    GX_LoadProjectionMtx(light_proj, GX_PERSPECTIVE);
+    
+    // Render to shadow map
+    GX_SetViewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, 1);
+    GX_SetScissor(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+    
+    // Disable color writes, only write depth
+    GX_SetColorUpdate(GX_FALSE);
+    GX_SetAlphaUpdate(GX_FALSE);
+    GX_SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+    
+    // Render scene from light's perspective
+    for(int i = 0; i < scene->object_count; i++) {
+        render_object_depth_only(&scene->objects[i], light_view);
+    }
+    
+    // Copy depth buffer to texture
+    GX_SetTexCopySrc(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+    GX_SetTexCopyDst(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, GX_TF_Z16, GX_FALSE);
+    GX_CopyTex(shadow_buffer, GX_FALSE);
+    GX_PixModeSync();
+    
+    // Restore normal rendering state
+    GX_SetColorUpdate(GX_TRUE);
+    GX_SetAlphaUpdate(GX_TRUE);
+}</code></pre>
+
+                <h2>Post-Processing Effects</h2>
+                <p>Implement screen-space effects using render-to-texture and multiple passes:</p>
+
+                <h3>Framebuffer Management</h3>
+                <pre><code>typedef struct {
+    void* color_buffer;
+    void* depth_buffer;
+    GXTexObj color_texture;
+    u16 width, height;
+} RenderTarget;
+
+static RenderTarget main_rt, temp_rt;
+
+void init_render_targets(u16 width, u16 height) {
+    // Main render target
+    main_rt.width = width;
+    main_rt.height = height;
+    main_rt.color_buffer = memalign(32, width * height * 4); // RGBA8
+    main_rt.depth_buffer = memalign(32, width * height * 4); // Z24
+    
+    GX_InitTexObj(&main_rt.color_texture, main_rt.color_buffer, 
+                  width, height, GX_TF_RGBA8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    
+    // Temporary render target for ping-pong rendering
+    temp_rt.width = width;
+    temp_rt.height = height;
+    temp_rt.color_buffer = memalign(32, width * height * 4);
+    
+    GX_InitTexObj(&temp_rt.color_texture, temp_rt.color_buffer,
+                  width, height, GX_TF_RGBA8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+}</code></pre>
+
+                <h3>Bloom Effect</h3>
+                <pre><code>void apply_bloom_effect() {
+    // Step 1: Extract bright pixels
+    GX_SetCopyFilter(GX_FALSE, NULL, GX_FALSE, NULL);
+    
+    // Setup TEV to extract pixels above threshold
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_SUB, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    
+    // Set bright extraction threshold
+    GXColor threshold = {200, 200, 200, 255};
+    GX_SetTevColor(GX_TEVREG0, threshold);
+    
+    render_fullscreen_quad(&main_rt.color_texture);
+    
+    // Step 2: Gaussian blur (horizontal)
+    setup_gaussian_blur_horizontal();
+    render_fullscreen_quad(&temp_rt.color_texture);
+    
+    // Step 3: Gaussian blur (vertical)
+    setup_gaussian_blur_vertical();
+    render_fullscreen_quad(&main_rt.color_texture);
+    
+    // Step 4: Combine with original
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL); // Original
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD0, GX_TEXMAP1, GX_COLOR_NULL); // Bloom
+    
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}</code></pre>
+
+                <h2>Environment Mapping</h2>
+                <p>Implement realistic reflections using cube maps or sphere mapping:</p>
+
+                <h3>Sphere Environment Mapping</h3>
+                <pre><code>void setup_sphere_mapping() {
+    // Generate sphere map texture coordinates from normal vectors
+    GX_SetTexCoordGen(GX_TEXCOORD1, GX_TG_NRM, GX_TG_NRM, GX_IDENTITY);
+    
+    // Transform normal to eye space, then to sphere map coordinates
+    Mtx sphere_mtx;
+    guMtxIdentity(sphere_mtx);
+    // This matrix converts normal vector to sphere map UV coordinates
+    sphere_mtx[0][0] = 0.5f; sphere_mtx[0][3] = 0.5f; // X component
+    sphere_mtx[1][1] = -0.5f; sphere_mtx[1][3] = 0.5f; // Y component (flip Y)
+    
+    GX_LoadTexMtxImm(sphere_mtx, GX_TEXMTX1, GX_MTX2x4);
+    GX_SetTexCoordGen(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX1);
+    
+    // Setup TEV to blend environment with base texture
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0); // Base
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR_NULL); // Environment
+    
+    // Fresnel-like blending based on viewing angle
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_RASA, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}</code></pre>
+
+                <h2>Particle Systems</h2>
+                <p>Efficient particle rendering using billboards and point sprites:</p>
+
+                <h3>Particle Structure</h3>
+                <pre><code>typedef struct {
+    guVector position;
+    guVector velocity;
+    f32 life;
+    f32 size;
+    GXColor color;
+    f32 rotation;
+    f32 angular_velocity;
+} Particle;
+
+typedef struct {
+    Particle* particles;
+    u32 max_particles;
+    u32 active_particles;
+    GXTexObj texture;
+    f32 gravity;
+    f32 drag;
+} ParticleSystem;
+
+void update_particles(ParticleSystem* ps, f32 dt) {
+    for(u32 i = 0; i < ps->active_particles; i++) {
+        Particle* p = &ps->particles[i];
+        
+        // Update physics
+        p->velocity.y += ps->gravity * dt;
+        p->velocity.x *= (1.0f - ps->drag * dt);
+        p->velocity.z *= (1.0f - ps->drag * dt);
+        
+        // Update position
+        p->position.x += p->velocity.x * dt;
+        p->position.y += p->velocity.y * dt;
+        p->position.z += p->velocity.z * dt;
+        
+        // Update rotation
+        p->rotation += p->angular_velocity * dt;
+        
+        // Update life
+        p->life -= dt;
+        
+        // Remove dead particles
+        if(p->life <= 0) {
+            ps->particles[i] = ps->particles[ps->active_particles - 1];
+            ps->active_particles--;
+            i--; // Recheck this index
+        }
+    }
+}</code></pre>
+
+                <div class="info-box">
+                    <h4>Performance Considerations</h4>
+                    <ul>
+                        <li>Use shadow maps sparingly - they require additional rendering passes</li>
+                        <li>Implement LOD systems to reduce vertex processing load</li>
+                        <li>Batch particles by texture to minimize state changes</li>
+                        <li>Use occlusion culling for complex indoor scenes</li>
+                        <li>Consider using lower resolution for post-processing effects</li>
+                        <li>Profile each effect to ensure 60 FPS performance</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="Shaders.html">TEV Shaders</a> - Advanced TEV programming for effects</li>
+                        <li><a href="Performance.html">Performance Optimization</a> - Optimization strategies</li>
+                        <li><a href="Textures.html">Texture Management</a> - Render target and texture techniques</li>
+                        <li><a href="Lighting.html">Lighting System</a> - Advanced lighting models</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+        GX_Position2f32(0, 0); GX_TexCoord2f32(0, 0);
+        GX_Position2f32(width, 0); GX_TexCoord2f32(1, 0);
+        GX_Position2f32(width, height); GX_TexCoord2f32(1, 1);
+        GX_Position2f32(0, height); GX_TexCoord2f32(0, 1);
+    GX_End();
+}
+            </code></pre>
+
+            <h2>Indirect Texturing</h2>
+            <p>
+                Indirect Texturing is a powerful feature that allows you to use the color from one texture (the "indirect texture") to offset the texture coordinates used to sample another texture (the "primary texture"). This is the basis for many advanced effects, including:
+            </p>
+            <ul>
+                <li><strong>Distortion effects:</strong> Using a noise or "flow map" texture to create the appearance of heat haze, flowing water, or ripples.</li>
+                <li><strong>Bump Mapping / Normal Mapping:</strong> Using a normal map texture to perturb the lighting calculations, giving a surface the appearance of having much more geometric detail than it actually does.</li>
+            </ul>
+            <p>
+                Setting up indirect texturing is complex, involving `GX_SetIndTexOrder`, `GX_SetIndTexCoordScale`, `GX_SetIndTexMtx`, and configuring special TEV stages. It is one of the most advanced features of the GX pipeline.
+            </p>
+        </main>
+    </div>
+</body>
+</html>

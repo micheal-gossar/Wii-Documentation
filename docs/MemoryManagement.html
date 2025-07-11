@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Management - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item active">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › System › Memory Management</nav>
+            </div>
+            <h1>Memory Management</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>Efficient memory management is crucial for Wii homebrew development due to the console's limited RAM (88 MB total, ~80 MB usable). This guide covers allocation strategies, cache management, and optimization techniques for Nintendo Wii applications.</p>
+
+                <h2>Wii Memory Architecture</h2>
+                <p>Understanding the Wii's memory layout is essential for optimal performance:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Memory Region</th>
+                            <th>Size</th>
+                            <th>Purpose</th>
+                            <th>Access Speed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>MEM1 (Main RAM)</td><td>24 MB</td><td>General purpose, OS usage</td><td>Fast</td></tr>
+                        <tr><td>MEM2 (Auxiliary RAM)</td><td>64 MB</td><td>Application data, large buffers</td><td>Slower</td></tr>
+                        <tr><td>L1 Data Cache</td><td>32 KB</td><td>CPU cache</td><td>Fastest</td></tr>
+                        <tr><td>L1 Instruction Cache</td><td>32 KB</td><td>CPU instruction cache</td><td>Fastest</td></tr>
+                        <tr><td>L2 Cache</td><td>256 KB</td><td>Shared L2 cache</td><td>Very Fast</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>Basic Memory Allocation</h2>
+                <p>libogc provides several memory allocation functions optimized for different use cases:</p>
+
+                <h3>Standard Allocation</h3>
+                <pre><code>#include &lt;malloc.h&gt;
+#include &lt;ogc/cache.h&gt;
+
+// Basic allocation
+void* buffer = malloc(1024);
+if(!buffer) {
+    // Handle allocation failure
+    printf("Memory allocation failed!\n");
+    return -1;
+}
+
+// Always free allocated memory
+free(buffer);
+
+// Aligned allocation for GPU data
+void* aligned_buffer = memalign(32, 1024); // 32-byte aligned
+DCFlushRange(aligned_buffer, 1024); // Flush to main memory
+free(aligned_buffer);</code></pre>
+
+                <h3>MEM2 Allocation</h3>
+                <pre><code>#include &lt;ogc/system.h&gt;
+
+// Allocate from MEM2 (larger, slower memory)
+void* mem2_buffer = SYS_AllocArena2MemLo(1024 * 1024, 32); // 1MB aligned to 32 bytes
+if(!mem2_buffer) {
+    printf("MEM2 allocation failed!\n");
+    return -1;
+}
+
+// Free MEM2 memory
+SYS_FreeArena2MemLo(mem2_buffer);</code></pre>
+
+                <h2>Cache Management</h2>
+                <p>Proper cache management is critical for performance and correctness:</p>
+
+                <h3>Data Cache Operations</h3>
+                <pre><code>#include &lt;ogc/cache.h&gt;
+
+void demonstrate_cache_operations() {
+    u8* data = (u8*)memalign(32, 1024);
+    
+    // Write data
+    memset(data, 0xAA, 1024);
+    
+    // Flush cache to ensure GPU can read the data
+    DCFlushRange(data, 1024);
+    
+    // Invalidate cache before reading GPU-modified data
+    DCInvalidateRange(data, 1024);
+    
+    // Store and flush cache line (atomic operation)
+    DCStoreRange(data, 1024);
+    
+    // Zero and flush cache line
+    DCZeroRange(data, 1024);
+    
+    free(data);
+}
+
+// Cache-friendly data structures
+typedef struct {
+    f32 position[3];    // 12 bytes
+    f32 normal[3];      // 12 bytes  
+    f32 texcoord[2];    // 8 bytes
+    // Total: 32 bytes - exactly one cache line
+} __attribute__((aligned(32))) Vertex;</code></pre>
+
+                <h3>Instruction Cache Management</h3>
+                <pre><code>// When loading code dynamically or modifying code at runtime
+void flush_instruction_cache(void* start, u32 size) {
+    // Flush data cache first
+    DCFlushRange(start, size);
+    
+    // Invalidate instruction cache
+    ICInvalidateRange(start, size);
+    
+    // Ensure all operations complete
+    __sync();
+}</code></pre>
+
+                <h2>Memory Pool Allocators</h2>
+                <p>Implement custom allocators to reduce fragmentation and improve performance:</p>
+
+                <h3>Fixed-Size Pool Allocator</h3>
+                <pre><code>typedef struct {
+    void* memory_pool;
+    u8* free_list;
+    u32 block_size;
+    u32 block_count;
+    u32 free_blocks;
+} FixedPool;
+
+FixedPool* create_fixed_pool(u32 block_size, u32 block_count) {
+    FixedPool* pool = malloc(sizeof(FixedPool));
+    if(!pool) return NULL;
+    
+    // Align block size to cache line boundary
+    block_size = (block_size + 31) & ~31;
+    
+    // Allocate memory pool
+    pool->memory_pool = memalign(32, block_size * block_count);
+    if(!pool->memory_pool) {
+        free(pool);
+        return NULL;
+    }
+    
+    // Initialize free list
+    pool->free_list = malloc(block_count);
+    for(u32 i = 0; i < block_count; i++) {
+        pool->free_list[i] = i;
+    }
+    
+    pool->block_size = block_size;
+    pool->block_count = block_count;
+    pool->free_blocks = block_count;
+    
+    return pool;
+}
+
+void* pool_alloc(FixedPool* pool) {
+    if(pool->free_blocks == 0) return NULL;
+    
+    u32 block_index = pool->free_list[--pool->free_blocks];
+    return (u8*)pool->memory_pool + (block_index * pool->block_size);
+}
+
+void pool_free(FixedPool* pool, void* ptr) {
+    if(!ptr) return;
+    
+    u32 block_index = ((u8*)ptr - (u8*)pool->memory_pool) / pool->block_size;
+    if(block_index < pool->block_count && pool->free_blocks < pool->block_count) {
+        pool->free_list[pool->free_blocks++] = block_index;
+    }
+}
+
+void destroy_fixed_pool(FixedPool* pool) {
+    if(pool) {
+        free(pool->memory_pool);
+        free(pool->free_list);
+        free(pool);
+    }
+}</code></pre>
+
+                <h3>Stack Allocator</h3>
+                <pre><code>typedef struct {
+    u8* memory;
+    u32 size;
+    u32 offset;
+    u32 marker_count;
+    u32 markers[16]; // Support up to 16 nested markers
+} StackAllocator;
+
+StackAllocator* create_stack_allocator(u32 size) {
+    StackAllocator* allocator = malloc(sizeof(StackAllocator));
+    if(!allocator) return NULL;
+    
+    allocator->memory = memalign(32, size);
+    if(!allocator->memory) {
+        free(allocator);
+        return NULL;
+    }
+    
+    allocator->size = size;
+    allocator->offset = 0;
+    allocator->marker_count = 0;
+    
+    return allocator;
+}
+
+void* stack_alloc(StackAllocator* allocator, u32 size) {
+    // Align to 32-byte boundary
+    size = (size + 31) & ~31;
+    
+    if(allocator->offset + size > allocator->size) {
+        return NULL; // Out of memory
+    }
+    
+    void* ptr = allocator->memory + allocator->offset;
+    allocator->offset += size;
+    
+    return ptr;
+}
+
+void stack_push_marker(StackAllocator* allocator) {
+    if(allocator->marker_count < 16) {
+        allocator->markers[allocator->marker_count++] = allocator->offset;
+    }
+}
+
+void stack_pop_marker(StackAllocator* allocator) {
+    if(allocator->marker_count > 0) {
+        allocator->offset = allocator->markers[--allocator->marker_count];
+    }
+}
+
+void destroy_stack_allocator(StackAllocator* allocator) {
+    if(allocator) {
+        free(allocator->memory);
+        free(allocator);
+    }
+}</code></pre>
+
+                <h2>Memory Debugging</h2>
+                <p>Implement debugging tools to detect memory leaks and corruption:</p>
+
+                <h3>Memory Tracking</h3>
+                <pre><code>#ifdef DEBUG_MEMORY
+
+typedef struct MemoryBlock {
+    void* ptr;
+    u32 size;
+    const char* file;
+    int line;
+    struct MemoryBlock* next;
+} MemoryBlock;
+
+static MemoryBlock* memory_blocks = NULL;
+static u32 total_allocated = 0;
+static u32 allocation_count = 0;
+
+void* debug_malloc(u32 size, const char* file, int line) {
+    void* ptr = malloc(size);
+    if(!ptr) return NULL;
+    
+    MemoryBlock* block = malloc(sizeof(MemoryBlock));
+    if(block) {
+        block->ptr = ptr;
+        block->size = size;
+        block->file = file;
+        block->line = line;
+        block->next = memory_blocks;
+        memory_blocks = block;
+        
+        total_allocated += size;
+        allocation_count++;
+    }
+    
+    return ptr;
+}
+
+void debug_free(void* ptr) {
+    if(!ptr) return;
+    
+    MemoryBlock** current = &memory_blocks;
+    while(*current) {
+        if((*current)->ptr == ptr) {
+            MemoryBlock* to_free = *current;
+            *current = (*current)->next;
+            
+            total_allocated -= to_free->size;
+            allocation_count--;
+            
+            free(to_free);
+            break;
+        }
+        current = &(*current)->next;
+    }
+    
+    free(ptr);
+}
+
+void print_memory_leaks() {
+    printf("Memory Leaks Detected:\n");
+    printf("Total leaked: %u bytes in %u allocations\n", total_allocated, allocation_count);
+    
+    MemoryBlock* current = memory_blocks;
+    while(current) {
+        printf("  %u bytes at %p (%s:%d)\n", 
+               current->size, current->ptr, current->file, current->line);
+        current = current->next;
+    }
+}
+
+#define malloc(size) debug_malloc(size, __FILE__, __LINE__)
+#define free(ptr) debug_free(ptr)
+
+#endif // DEBUG_MEMORY</code></pre>
+
+                <h2>Performance Optimization</h2>
+                
+                <h3>Memory Access Patterns</h3>
+                <pre><code>// BAD: Random memory access (cache misses)
+void process_sparse_data_bad(DataNode* nodes, u32 count) {
+    for(u32 i = 0; i < count; i++) {
+        if(nodes[i].next_ptr) {
+            process_node(nodes[i].next_ptr); // Pointer chase - cache miss
+        }
+    }
+}
+
+// GOOD: Sequential memory access (cache friendly)
+void process_sparse_data_good(DataNode* nodes, u32 count) {
+    // First pass: collect valid indices
+    u32 valid_indices[256];
+    u32 valid_count = 0;
+    
+    for(u32 i = 0; i < count && valid_count < 256; i++) {
+        if(nodes[i].next_ptr) {
+            valid_indices[valid_count++] = i;
+        }
+    }
+    
+    // Second pass: process in order
+    for(u32 i = 0; i < valid_count; i++) {
+        process_node(&nodes[valid_indices[i]]);
+    }
+}</code></pre>
+
+                <h3>Data Structure Optimization</h3>
+                <pre><code>// Structure of Arrays (SoA) - Better for SIMD operations
+typedef struct {
+    f32* positions_x;
+    f32* positions_y;
+    f32* positions_z;
+    f32* velocities_x;
+    f32* velocities_y;
+    f32* velocities_z;
+    u32 count;
+} ParticleSystem_SoA;
+
+// Array of Structures (AoS) - Better for object-oriented access
+typedef struct {
+    f32 position[3];
+    f32 velocity[3];
+} Particle;
+
+typedef struct {
+    Particle* particles;
+    u32 count;
+} ParticleSystem_AoS;
+
+// Choose based on access patterns:
+// SoA for operations on single components
+// AoS for operations on complete objects</code></pre>
+
+                <div class="info-box">
+                    <h4>Memory Management Best Practices</h4>
+                    <ul>
+                        <li>Always align GPU data to 32-byte boundaries using <code>memalign()</code></li>
+                        <li>Flush cache after writing data that the GPU will read</li>
+                        <li>Invalidate cache before reading GPU-modified data</li>
+                        <li>Use memory pools for frequently allocated/deallocated objects</li>
+                        <li>Minimize dynamic allocation during gameplay</li>
+                        <li>Structure data for sequential access patterns</li>
+                        <li>Monitor memory usage and detect leaks during development</li>
+                        <li>Use MEM2 for large, infrequently accessed data</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="Performance.html">Performance Optimization</a> - Memory-related performance tips</li>
+                        <li><a href="Textures.html">Texture Management</a> - Texture memory optimization</li>
+                        <li><a href="Threading.html">Threading</a> - Thread-safe memory management</li>
+                        <li><a href="DataInterop.html">C/C++ Interop</a> - Memory layout considerations</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Memory Management</h1>
+      <p class="intro">Efficient memory management is critical for Wii development due to the console's limited RAM (88 MB total). This guide covers the essential concepts and functions for managing memory, ensuring cache coherency, and allocating memory for graphics resources.</p>
+
+      <section id="memory-architecture">
+        <h2>Wii Memory Architecture</h2>
+        <p>The Wii has two primary memory regions accessible to the CPU, plus a third region for audio.</p>
+        <ul>
+          <li><strong>MEM1 (Main RAM):</strong> 24 MB of fast, general-purpose RAM. This is where your game's code, the stack, and most of your heap allocations will live.</li>
+          <li><strong>MEM2 (Extended RAM):</strong> 64 MB of slightly slower RAM. Because of its size, it's ideal for storing large assets like textures, models, and sound data that don't need to be accessed at maximum speed every frame.</li>
+          <li><strong>ARAM (Audio RAM):</strong> 16 MB of dedicated RAM for the Audio DSP. Data must be moved to and from ARAM using DMA transfers.</li>
+        </ul>
+        <p>Pointers can be converted between their cached and uncached representations, which is crucial for working with hardware that accesses memory directly (like the GPU).</p>
+      </section>
+
+      <section id="allocation">
+        <h2>Allocation and Alignment</h2>
+        <p>Standard C functions like <code>malloc</code> and <code>free</code> work as expected. However, for graphics programming, you often need memory that is aligned to a specific boundary (typically 32 bytes for the Wii's DMA and cache lines).</p>
+        <p>Using misaligned memory for graphics data can cause performance penalties or hardware exceptions.</p>
+        <pre><code class="language-cpp">// For standard allocations, malloc is fine.
+void* my_data = malloc(100); // 100 bytes, no alignment guarantee.
+free(my_data);
+
+// For graphics data, always use memalign.
+// This allocates 2048 bytes of memory aligned to a 32-byte boundary.
+void* my_texture_buffer = memalign(32, 2048);
+free(my_texture_buffer);
+</code></pre>
+        <dl>
+          <dt><code>void* memalign(size_t alignment, size_t size)</code></dt>
+          <dd>Allocates <code>size</code> bytes of memory and returns a pointer to it. The memory address will be a multiple of <code>alignment</code>. This is the most important function for allocating graphics memory.</dd>
+        </dl>
+      </section>
+
+      <section id="cache-coherency">
+        <h2>Cache Coherency</h2>
+        <p>The PowerPC CPU in the Wii has data and instruction caches to speed up memory access. However, when external hardware (like the GPU) modifies memory directly, the CPU's cache can become out of date, leading to incorrect data being read. You must manually manage the cache in these situations.</p>
+        <p>There are two primary operations:</p>
+        <ul>
+          <li><strong>Flushing:</strong> Writing data from the cache out to main memory. This ensures that any changes made by the CPU are visible to other hardware.</li>
+          <li><strong>Invalidating:</strong> Marking a region of the cache as invalid. This forces the CPU to re-read the data from main memory the next time it's needed, ensuring it gets the latest version modified by external hardware.</li>
+        </ul>
+        <pre><code class="language-cpp">// Example: Preparing a texture for the GPU
+void* texture_data = memalign(32, 4096);
+
+// 1. CPU writes pixel data into the buffer
+for(int i = 0; i < 1024; ++i) {
+    ((u32*)texture_data)[i] = 0xFF00FFFF; // Magenta
+}
+
+// 2. Flush the cache. This pushes the CPU's changes from the cache to main memory (MEM1/MEM2).
+DCFlushRange(texture_data, 4096);
+
+// ... send texture to GPU ...
+</code></pre>
+        <dl>
+          <dt><code>void DCFlushRange(void* address, u32 size)</code></dt>
+          <dd>Flushes the data cache for the memory block starting at <code>address</code> for <code>size</code> bytes. Use this *after* the CPU has written data that the GPU needs to read.</dd>
+          <dt><code>void DCInvalidateRange(void* address, u32 size)</code></dt>
+          <dd>Invalidates the data cache for the specified memory block. Use this *before* the CPU reads data that the GPU may have written.</dd>
+           <dt><code>void DCTouchRange(void* address, u32 size)</code></dt>
+          <dd>A synonym for DCFlushRange, often used to indicate the intention to "touch" memory to ensure it's loaded into the cache before use.</dd>
+        </dl>
+      </section>
+
+      <section id="advanced-techniques">
+        <h2>Advanced Memory Techniques</h2>
+        
+        <h3>Memory Pool Management</h3>
+        <p>Implement custom memory pools for specific allocation patterns:</p>
+        <pre><code>typedef struct {
+    void* base_ptr;
+    u32 total_size;
+    u32 block_size;
+    u32 num_blocks;
+    u8* free_list;
+    lwp_mutex_t mutex;
+} MemoryPool;
+
+MemoryPool* create_memory_pool(u32 block_size, u32 num_blocks) {
+    MemoryPool* pool = malloc(sizeof(MemoryPool));
+    if (!pool) return NULL;
+    
+    pool->block_size = ALIGN_32(block_size);
+    pool->num_blocks = num_blocks;
+    pool->total_size = pool->block_size * num_blocks;
+    
+    // Allocate aligned memory for the pool
+    pool->base_ptr = memalign(32, pool->total_size);
+    if (!pool->base_ptr) {
+        free(pool);
+        return NULL;
+    }
+    
+    // Initialize free list
+    pool->free_list = malloc(num_blocks);
+    for (u32 i = 0; i < num_blocks; i++) {
+        pool->free_list[i] = 1; // 1 = free, 0 = allocated
+    }
+    
+    LWP_MutexInit(&pool->mutex, false);
+    return pool;
+}
+
+void* pool_alloc(MemoryPool* pool) {
+    LWP_MutexLock(pool->mutex);
+    
+    for (u32 i = 0; i < pool->num_blocks; i++) {
+        if (pool->free_list[i]) {
+            pool->free_list[i] = 0;
+            void* ptr = (u8*)pool->base_ptr + (i * pool->block_size);
+            LWP_MutexUnlock(pool->mutex);
+            return ptr;
+        }
+    }
+    
+    LWP_MutexUnlock(pool->mutex);
+    return NULL; // Pool exhausted
+}
+
+void pool_free(MemoryPool* pool, void* ptr) {
+    if (!ptr) return;
+    
+    LWP_MutexLock(pool->mutex);
+    
+    u32 offset = (u8*)ptr - (u8*)pool->base_ptr;
+    u32 block_index = offset / pool->block_size;
+    
+    if (block_index < pool->num_blocks) {
+        pool->free_list[block_index] = 1;
+    }
+    
+    LWP_MutexUnlock(pool->mutex);
+}</code></pre>
+
+        <h3>Stack Allocator</h3>
+        <p>Efficient temporary memory allocation using stack semantics:</p>
+        <pre><code>typedef struct {
+    void* base;
+    u32 size;
+    u32 offset;
+    u32 peak_usage;
+} StackAllocator;
+
+StackAllocator* create_stack_allocator(u32 size) {
+    StackAllocator* stack = malloc(sizeof(StackAllocator));
+    if (!stack) return NULL;
+    
+    stack->base = memalign(32, size);
+    if (!stack->base) {
+        free(stack);
+        return NULL;
+    }
+    
+    stack->size = size;
+    stack->offset = 0;
+    stack->peak_usage = 0;
+    return stack;
+}
+
+void* stack_alloc(StackAllocator* stack, u32 size) {
+    size = ALIGN_32(size);
+    
+    if (stack->offset + size > stack->size) {
+        return NULL; // Stack overflow
+    }
+    
+    void* ptr = (u8*)stack->base + stack->offset;
+    stack->offset += size;
+    
+    if (stack->offset > stack->peak_usage) {
+        stack->peak_usage = stack->offset;
+    }
+    
+    return ptr;
+}
+
+void stack_reset(StackAllocator* stack) {
+    stack->offset = 0;
+}
+
+u32 stack_get_marker(StackAllocator* stack) {
+    return stack->offset;
+}
+
+void stack_rewind_to_marker(StackAllocator* stack, u32 marker) {
+    if (marker <= stack->size) {
+        stack->offset = marker;
+    }
+}</code></pre>
+
+                <h3>Memory Debugging and Profiling</h3>
+                <p>Track memory usage and detect leaks:</p>
+                <pre><code>#ifdef DEBUG_MEMORY
+typedef struct MemBlock {
+    void* ptr;
+    u32 size;
+    const char* file;
+    int line;
+    struct MemBlock* next;
+} MemBlock;
+
+static MemBlock* mem_blocks = NULL;
+static u32 total_allocated = 0;
+static u32 peak_allocated = 0;
+static lwp_mutex_t mem_debug_mutex;
+
+void* debug_malloc(u32 size, const char* file, int line) {
+    void* ptr = malloc(size);
+    if (!ptr) return NULL;
+    
+    LWP_MutexLock(mem_debug_mutex);
+    
+    MemBlock* block = malloc(sizeof(MemBlock));
+    block->ptr = ptr;
+    block->size = size;
+    block->file = file;
+    block->line = line;
+    block->next = mem_blocks;
+    mem_blocks = block;
+    
+    total_allocated += size;
+    if (total_allocated > peak_allocated) {
+        peak_allocated = total_allocated;
+    }
+    
+    LWP_MutexUnlock(mem_debug_mutex);
+    return ptr;
+}
+
+void debug_free(void* ptr) {
+    if (!ptr) return;
+    
+    LWP_MutexLock(mem_debug_mutex);
+    
+    MemBlock** current = &mem_blocks;
+    while (*current) {
+        if ((*current)->ptr == ptr) {
+            MemBlock* to_delete = *current;
+            total_allocated -= to_delete->size;
+            *current = to_delete->next;
+            free(to_delete);
+            break;
+        }
+        current = &(*current)->next;
+    }
+    
+    LWP_MutexUnlock(mem_debug_mutex);
+    free(ptr);
+}
+
+void print_memory_report() {
+    printf("Memory Report:\n");
+    printf("Currently allocated: %u bytes\n", total_allocated);
+    printf("Peak allocation: %u bytes\n", peak_allocated);
+    
+    if (mem_blocks) {
+        printf("Active allocations:\n");
+        MemBlock* block = mem_blocks;
+        while (block) {
+            printf("  %u bytes at %p (%s:%d)\n", 
+                   block->size, block->ptr, block->file, block->line);
+            block = block->next;
+        }
+    }
+}
+
+#define malloc(size) debug_malloc(size, __FILE__, __LINE__)
+#define free(ptr) debug_free(ptr)
+#endif</code></pre>
+
+                <h2>Memory-Mapped I/O</h2>
+                
+                <h3>Hardware Register Access</h3>
+                <p>Direct hardware register manipulation requires careful memory management:</p>
+                <pre><code>// Memory-mapped hardware registers
+#define HW_REG_BASE     0xCC000000
+#define VI_BASE         (HW_REG_BASE + 0x2000)
+#define PI_BASE         (HW_REG_BASE + 0x3000)
+#define MI_BASE         (HW_REG_BASE + 0x4000)
+#define DSP_BASE        (HW_REG_BASE + 0x5000)
+#define DI_BASE         (HW_REG_BASE + 0x6000)
+#define SI_BASE         (HW_REG_BASE + 0x6400)
+#define EXI_BASE        (HW_REG_BASE + 0x6800)
+#define AI_BASE         (HW_REG_BASE + 0x6C00)
+#define GP_BASE         (HW_REG_BASE + 0x000000)
+
+// Safe register access macros
+#define HW_REG(reg) (*(volatile u32*)(reg))
+#define HW_REG16(reg) (*(volatile u16*)(reg))
+#define HW_REG8(reg) (*(volatile u8*)(reg))
+
+// Video Interface registers
+#define VI_CONTROL      (VI_BASE + 0x00)
+#define VI_ORIGIN       (VI_BASE + 0x04)
+#define VI_WIDTH        (VI_BASE + 0x08)
+#define VI_INTR0        (VI_BASE + 0x0C)
+
+// Example: Safe video mode switching
+void set_video_mode_direct(u32 mode) {
+    // Disable interrupts during register modification
+    u32 level = IRQ_Disable();
+    
+    // Read-modify-write to avoid glitches
+    u32 control = HW_REG(VI_CONTROL);
+    control = (control & ~0x3) | (mode & 0x3);
+    HW_REG(VI_CONTROL) = control;
+    
+    // Memory barrier to ensure write completion
+    __asm__ volatile("eieio");
+    
+    IRQ_Restore(level);
+}</code></pre>
+
+                <h3>DMA Memory Management</h3>
+                <p>Optimize large data transfers using DMA:</p>
+                <pre><code>// DMA-safe memory allocation
+void* alloc_dma_memory(u32 size) {
+    // DMA requires 32-byte alignment
+    void* ptr = memalign(32, ALIGN_32(size));
+    if (ptr) {
+        // Clear the memory
+        memset(ptr, 0, size);
+        // Flush to main memory
+        DCFlushRange(ptr, size);
+    }
+    return ptr;
+}
+
+// Asynchronous DMA transfer
+typedef struct {
+    void* src;
+    void* dst;
+    u32 size;
+    bool completed;
+    lwp_cond_t completion_cond;
+    lwp_mutex_t mutex;
+} DMATransfer;
+
+void start_dma_transfer(DMATransfer* transfer) {
+    // Ensure source data is flushed to memory
+    DCFlushRange(transfer->src, transfer->size);
+    
+    // Invalidate destination cache
+    DCInvalidateRange(transfer->dst, transfer->size);
+    
+    // Start DMA operation (implementation depends on hardware)
+    // This would use the actual DMA hardware registers
+    
+    transfer->completed = false;
+}
+
+void wait_for_dma_completion(DMATransfer* transfer) {
+    LWP_MutexLock(transfer->mutex);
+    while (!transfer->completed) {
+        LWP_CondWait(transfer->completion_cond, transfer->mutex);
+    }
+    LWP_MutexUnlock(transfer->mutex);
+}</code></pre>
+
+                <h2>Cache Management Strategies</h2>
+                
+                <h3>Texture Cache Optimization</h3>
+                <pre><code>// Optimal texture loading pattern
+void load_texture_optimized(GXTexObj* tex_obj, void* image_data, 
+                           u32 width, u32 height, u32 format) {
+    u32 image_size = GX_GetTexBufferSize(width, height, format, 
+                                        GX_FALSE, 0);
+    
+    // Allocate texture memory with proper alignment
+    void* tex_memory = memalign(32, image_size);
+    
+    // Copy texture data
+    memcpy(tex_memory, image_data, image_size);
+    
+    // Flush CPU cache to ensure GPU can see the data
+    DCFlushRange(tex_memory, image_size);
+    
+    // Initialize texture object
+    GX_InitTexObj(tex_obj, tex_memory, width, height, format, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    
+    // Preload into texture cache if possible
+    GX_PreloadEntireTexture(tex_obj, GX_TEXCACHE_32K);
+}</code></pre>
+
+                <h3>Vertex Data Cache Management</h3>
+                <pre><code>// Cache-friendly vertex array organization
+typedef struct {
+    float x, y, z;          // Position (12 bytes)
+    float nx, ny, nz;       // Normal (12 bytes)
+    float u, v;             // UV coordinates (8 bytes)
+} __attribute__((packed)) Vertex; // Total: 32 bytes (cache line size)
+
+void render_vertex_array_optimized(Vertex* vertices, u32 count) {
+    // Ensure vertex data is in main memory
+    DCFlushRange(vertices, count * sizeof(Vertex));
+    
+    // Use array pointers for optimal performance
+    GX_SetArray(GX_VA_POS, vertices, sizeof(Vertex));
+    GX_SetArray(GX_VA_NRM, &vertices[0].nx, sizeof(Vertex));
+    GX_SetArray(GX_VA_TEX0, &vertices[0].u, sizeof(Vertex));
+    
+    GX_Begin(GX_TRIANGLES, GX_VTXFMT0, count);
+    for (u32 i = 0; i < count; i++) {
+        GX_Position1x8(i);
+        GX_Normal1x8(i);
+        GX_TexCoord1x8(i);
+    }
+    GX_End();
+}</code></pre>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

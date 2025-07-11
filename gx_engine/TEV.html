@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX TEV Stages - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="../docs/Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="../docs/Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="../docs/Textures.html" class="nav-item">Texture Management</a>
+                <a href="../docs/Lighting.html" class="nav-item">Lighting System</a>
+                <a href="../docs/AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="../docs/Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="../docs/WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="../docs/MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="../docs/Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="../docs/ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="../docs/BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="../docs/IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="../docs/AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="../docs/SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="../docs/AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="../docs/MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="../docs/Threading.html" class="nav-item">Threading</a>
+                <a href="../docs/AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="../docs/NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="../docs/DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="../docs/UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="../docs/FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="../docs/Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="../docs/WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="Initialization.html" class="nav-item">Initialization</a>
+                <a href="Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="Matrices.html" class="nav-item">Matrices</a>
+                <a href="TEV.html" class="nav-item active">TEV Stages</a>
+                <a href="Textures.html" class="nav-item">Textures</a>
+                <a href="Lighting.html" class="nav-item">Lighting</a>
+                <a href="Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; GX Engine &raquo; TEV Stages</nav>
+            </div>
+            <h1>GX Texture Environment (TEV)</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>The Texture Environment, or TEV, is the heart of the GX pixel processing pipeline. It is a series of configurable "stages" that combine colors and textures to produce the final color for each pixel. While modern GPUs use programmable pixel shaders written in languages like GLSL, the Wii uses this fixed-function but highly configurable hardware pipeline. Understanding TEV is key to creating advanced visual effects.</p>
+
+            <h2>TEV Stages</h2>
+            <p>The GX provides up to 16 sequential TEV stages (<code>GX_TEVSTAGE0</code> to <code>GX_TEVSTAGE15</code>). Each stage takes up to four inputs, performs a calculation on them, and passes the result to the next stage. The output of the final configured stage determines the pixel's color.</p>
+            <p>The inputs to a TEV stage can be:</p>
+            <ul>
+                <li>The color from a texture sample.</li>
+                <li>The rasterized color from the vertex (i.e., the interpolated vertex color).</li>
+                <li>A constant color set in a TEV register.</li>
+                <li>The result of the <em>previous</em> TEV stage.</li>
+                <li>The alpha channel of any of the above.</li>
+                <li>A "zero" value (i.e., black).</li>
+            </ul>
+
+            <h2>Configuring a TEV Stage</h2>
+            <p>Setting up a TEV stage involves two main functions: <code>GX_SetTevOrder</code> and <code>GX_SetTevOp</code>.</p>
+
+            <h3>1. GX_SetTevOrder</h3>
+            <p>This function defines which texture and color inputs are available to a TEV stage.</p>
+            <pre><code class="language-c">
+#include &lt;gx.h&gt;
+
+// For TEV stage 0, we want to use texture coordinates from TEXCOORD0,
+// map it to the texture currently in TEXMAP0, and use the rasterized vertex color (GX_COLOR0A0).
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+            </code></pre>
+            <p>This call makes the color from the specified texture map and the vertex color available as inputs for the combiner operation in this stage.</p>
+
+            <h3>2. GX_SetTevOp (The Combiner)</h3>
+            <p>This is the most important TEV function. It defines the mathematical operation for the stage. It configures both the color (RGB) and alpha (A) calculations separately.</p>
+            <p>The general formula for a TEV stage is: <strong><code>Result = (d &#x2295; ((1-c)*a + c*b)) + bias</code></strong>, where <code>a, b, c, d</code> are the inputs, and <code>&#x2295;</code> is a comparison operation.</p>
+            <p>A simple and common operation is to simply replace the incoming color with the texture color (modulate).</p>
+            <pre><code class="language-c">
+// Configure TEV stage 0 to simply output the texture color.
+// This is a common setup for basic texturing.
+
+GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
+            </code></pre>
+            <p>The <code>GX_REPLACE</code> mode is a shorthand for a specific combination of inputs and operations that results in the output being exactly the texture color. For more complex operations, you must use <code>GX_SetTevColorIn</code>, <code>GX_SetTevAlphaIn</code>, <code>GX_SetTevColorOp</code>, and <code>GX_SetTevAlphaOp</code> to configure the combiner manually.</p>
+
+            <h3>Example: Modulating Texture with Vertex Color</h3>
+            <p>A very common effect is to multiply a texture's color by the vertex color. This allows you to tint textured objects. This is achieved by setting up one TEV stage.</p>
+            <pre><code class="language-c">
+// Stage 0: Modulate texture with vertex color
+
+// Step 1: Define the inputs for the stage
+// We need the texture color and the rasterized (vertex) color.
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+
+// Step 2: Define the operation
+// We will use the GX_MODULATE shorthand, which multiplies the texture color (tex)
+// with the rasterized color (ras).
+// Formula: Result = tex * ras
+GX_SetTevOp(GX_TEVSTAGE0, GX_MODULATE);
+            </code></pre>
+            <p>After this setup, any textured geometry drawn will have its texture colors multiplied by its vertex colors, providing a simple lighting or tinting effect.</p>
+
+            <h2>Chaining Stages</h2>
+            <p>More complex effects are created by chaining stages. The output of one stage can be used as an input for the next. For example, you could use Stage 0 to apply a base texture, Stage 1 to apply lighting, and Stage 2 to blend in a detail texture.</p>
+            <pre><code class="language-c">
+// --- STAGE 0: Apply base texture ---
+GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE); // Output = Texture Color
+
+// --- STAGE 1: Modulate with vertex lighting color ---
+// Use the result of the previous stage (GX_PREV) as an input.
+GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_ZERO, GX_CC_PREV, GX_CC_RASC, GX_CC_ZERO);
+GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+// This is a more complex setup that effectively does: Result = PREV * RASC
+// (Result of Stage 0 * Vertex Color)
+            </code></pre>
+            <p>Mastering the TEV stages is an art, but it is what allows for visually rich and unique graphics on the Nintendo Wii.</p>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

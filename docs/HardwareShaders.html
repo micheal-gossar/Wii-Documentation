@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardware Shaders & GPU Programming - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="HardwareShaders.html" class="nav-item active">Hardware Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Graphics › Hardware Shaders</nav>
+            </div>
+            <h1>Hardware Shaders & GPU Programming</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>The Nintendo Wii's "Hollywood" GPU (based on ATI's R5xx/Flipper architecture) provides a unique fixed-function pipeline with programmable elements through the TEV (Texture Environment) unit. Understanding the hardware architecture is crucial for maximizing visual quality and performance on this distinctive platform.</p>
+
+                <h2>GPU Architecture Deep Dive</h2>
+                <p>The Wii GPU operates at 243 MHz and features a sophisticated tile-based rendering architecture:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Function</th>
+                            <th>Capabilities</th>
+                            <th>Hardware Limits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Vertex Processor</td><td>Transform & Lighting</td><td>8 matrix units, 4 light calculations</td><td>~12M vertices/sec</td></tr>
+                        <tr><td>TEV Unit</td><td>Pixel shader equivalent</td><td>16 stages, 8 texture units</td><td>4 texels/clock</td></tr>
+                        <tr><td>Z-Buffer</td><td>Depth testing</td><td>24-bit depth, 8-bit stencil</td><td>Embedded memory</td></tr>
+                        <tr><td>Texture Cache</td><td>Texture storage</td><td>1MB embedded, fast access</td><td>Hardware decompression</td></tr>
+                        <tr><td>Framebuffer</td><td>Render target</td><td>2MB embedded memory</td><td>720x480 max</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>TEV Hardware Programming Model</h2>
+                <p>The TEV unit provides a dataflow-based programming model where each stage represents a processing unit in the pipeline:</p>
+
+                <h3>TEV Stage Architecture</h3>
+                <pre><code>// TEV Stage Hardware Schematic (pseudo-code)
+struct TEVStage {
+    // Input Selection (4 inputs: a, b, c, d)
+    u8 color_input_a, color_input_b, color_input_c, color_input_d;
+    u8 alpha_input_a, alpha_input_b, alpha_input_c, alpha_input_d;
+    
+    // Operation Configuration
+    u8 color_operation;    // ADD, SUB, COMP_R8_GT, COMP_R8_EQ, etc.
+    u8 alpha_operation;    // Same operations available
+    
+    // Bias and Scale
+    u8 color_bias;         // -0.5, 0, +0.5
+    u8 alpha_bias;
+    u8 color_scale;        // 1x, 2x, 4x
+    u8 alpha_scale;
+    
+    // Clamping and Output
+    bool clamp_output;     // Clamp to [0,1]
+    u8 output_register;    // PREV, REG0, REG1, REG2
+};
+
+// Hardware formula: out = clamp(bias + scale * op(a, b, c, d))</code></pre>
+
+                <h3>Direct Hardware Register Access</h3>
+                <pre><code>#include &lt;gx.h&gt;
+
+// Low-level TEV configuration for maximum control
+void configure_tev_stage_raw(u8 stage) {
+    // Configure color inputs directly
+    // Format: GX_SetTevColorIn(stage, a, b, c, d)
+    GX_SetTevColorIn(stage, 
+                     GX_CC_TEXC,    // a = texture color
+                     GX_CC_ZERO,    // b = 0 (unused)
+                     GX_CC_ZERO,    // c = 0 (no interpolation)
+                     GX_CC_RASC);   // d = rasterized color
+    
+    // Configure color operation
+    // Formula: d + (1-c)*a + c*b = rasc + 1*texc + 0 = rasc + texc
+    GX_SetTevColorOp(stage,
+                     GX_TEV_ADD,    // Addition operation
+                     GX_TB_ZERO,    // No bias
+                     GX_CS_SCALE_1, // 1x scale
+                     GX_TRUE,       // Clamp output
+                     GX_TEVPREV);   // Output to previous register
+    
+    // Configure alpha channel similarly
+    GX_SetTevAlphaIn(stage, GX_CA_TEXA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA);
+    GX_SetTevAlphaOp(stage, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}</code></pre>
+
+                <h2>Advanced Hardware Techniques</h2>
+
+                <h3>Multi-Pass Rendering with Hardware Blending</h3>
+                <pre><code>// Implement complex effects using multiple hardware passes
+void multi_pass_shader_effect() {
+    // Pass 1: Base lighting calculation
+    GX_SetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
+    
+    // TEV Stage 0: Diffuse lighting
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+    
+    // Render base geometry
+    render_base_geometry();
+    
+    // Pass 2: Specular highlights (additive blend)
+    GX_SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_CLEAR);
+    
+    // TEV Stage 0: Specular calculation using texture alpha as intensity
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_RASC, GX_CC_TEXA, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_2, GX_TRUE, GX_TEVPREV);
+    
+    // Render specular pass
+    render_specular_geometry();
+    
+    // Pass 3: Environmental reflections (multiply blend)
+    GX_SetBlendMode(GX_BM_BLEND, GX_BL_DSTCLR, GX_BL_ZERO, GX_LO_CLEAR);
+    
+    // TEV configured for environment mapping
+    setup_environment_mapping();
+    render_reflective_surfaces();
+}</code></pre>
+
+                <h3>Hardware-Accelerated Normal Mapping</h3>
+                <pre><code>// Implement normal mapping using TEV stages and matrix transformations
+void setup_normal_mapping() {
+    // Load normal map into texture unit 1
+    GX_LoadTexObj(&normal_texture, GX_TEXMAP1);
+    
+    // Configure texture coordinate generation for tangent space
+    GX_SetTexCoordGen(GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_NRM, GX_TEXMTX1);
+    
+    // Set up tangent space matrix (computed per vertex)
+    Mtx tangent_matrix;
+    // ... calculate tangent space transformation
+    GX_LoadTexMtxImm(tangent_matrix, GX_TEXMTX1, GX_MTX3x4);
+    
+    // TEV Stage 0: Sample normal map and convert from [0,1] to [-1,1]
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR_NULL);
+    GX_SetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_HALF, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE0, GX_TEV_SUB, GX_TB_ZERO, GX_CS_SCALE_2, GX_FALSE, GX_TEVREG0);
+    
+    // TEV Stage 1: Compute dot product with light direction
+    GX_SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+    GX_SetTevColorIn(GX_TEVSTAGE1, GX_CC_C0, GX_CC_RASC, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVREG1);
+    
+    // TEV Stage 2: Modulate with base texture
+    GX_SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
+    GX_SetTevColorIn(GX_TEVSTAGE2, GX_CC_TEXC, GX_CC_C1, GX_CC_ZERO, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}</code></pre>
+
+                <h3>Hardware Shadow Mapping</h3>
+                <pre><code>// Utilize hardware depth comparison for shadow mapping
+void setup_hardware_shadows() {
+    // Configure depth texture for shadow map
+    GXTexObj shadow_texture;
+    GX_InitTexObj(&shadow_texture, shadow_map_data, 512, 512, GX_TF_Z24X8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    
+    // Enable depth comparison
+    GX_InitTexObjLOD(&shadow_texture, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+    GX_LoadTexObj(&shadow_texture, GX_TEXMAP2);
+    
+    // Configure texture coordinate generation for shadow projection
+    GX_SetTexCoordGen(GX_TEXCOORD2, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX2);
+    
+    // Load light projection matrix
+    Mtx44 light_projection;
+    Mtx light_view;
+    // ... calculate light space transformation
+    Mtx combined_matrix;
+    guMtxConcat(light_view, light_projection, combined_matrix);
+    GX_LoadTexMtxImm(combined_matrix, GX_TEXMTX2, GX_MTX3x4);
+    
+    // TEV Stage 3: Shadow test
+    GX_SetTevOrder(GX_TEVSTAGE3, GX_TEXCOORD2, GX_TEXMAP2, GX_COLOR_NULL);
+    
+    // Use comparison operation for shadow testing
+    GX_SetTevColorIn(GX_TEVSTAGE3, GX_CC_CPREV, GX_CC_TEXC, GX_CC_ONE, GX_CC_ZERO);
+    GX_SetTevColorOp(GX_TEVSTAGE3, GX_TEV_COMP_R8_GT, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+}</code></pre>
+
+                <h2>Hardware-Specific Optimizations</h2>
+
+                <h3>Texture Bandwidth Optimization</h3>
+                <pre><code>// Optimize for hardware texture cache efficiency
+void optimize_texture_access() {
+    // Use compressed texture formats when possible
+    GXTexObj texture;
+    GX_InitTexObj(&texture, texture_data, width, height, 
+                  GX_TF_CMPR,  // Hardware DXT1 compression
+                  GX_REPEAT, GX_REPEAT, GX_FALSE);
+    
+    // Configure optimal texture filtering
+    GX_InitTexObjFilterMode(&texture, 
+                           GX_LINEAR,   // Mag filter
+                           GX_LINEAR);  // Min filter - hardware interpolation
+    
+    // Use trilinear filtering efficiently
+    GX_InitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR_MIPMAP_LINEAR,
+                     0.0f, 10.0f,    // Min/max LOD
+                     -0.5f,          // LOD bias for sharper textures
+                     GX_FALSE,       // Bias clamp
+                     GX_TRUE,        // Do edge LOD
+                     GX_ANISO_1);    // Anisotropic filtering
+}</code></pre>
+
+                <h3>Vertex Processing Optimization</h3>
+                <pre><code>// Leverage hardware vertex processing capabilities
+void setup_hardware_vertex_processing() {
+    // Configure hardware vertex format for optimal processing
+    GX_ClearVtxDesc();
+    GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);     // Position: direct (no indexing)
+    GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT);     // Normal: direct
+    GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);    // Color: direct
+    GX_SetVtxDesc(GX_VA_TEX0, GX_DIRECT);    // Texture coords: direct
+    
+    // Optimal vertex attribute formats
+    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_S16, 14);  // Fixed-point normals
+    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+    GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    
+    // Enable hardware lighting calculations
+    GX_SetNumChans(1);
+    GX_SetChanCtrl(GX_COLOR0A0, 
+                   GX_ENABLE,     // Enable lighting
+                   GX_SRC_REG,    // Ambient source
+                   GX_SRC_VTX,    // Material source (vertex color)
+                   GX_LIGHT0 | GX_LIGHT1,  // Active lights
+                   GX_DF_CLAMP,   // Diffuse function
+                   GX_AF_NONE);   // Attenuation function
+}</code></pre>
+
+                <h3>Pipeline State Caching</h3>
+                <pre><code>// Minimize state changes for better hardware utilization
+typedef struct {
+    u32 tev_config_hash;
+    u8 num_stages;
+    u8 blend_mode;
+    u8 z_mode;
+    bool valid;
+} PipelineState;
+
+static PipelineState cached_states[64];
+static u32 current_state_hash = 0;
+
+u32 calculate_pipeline_hash(const TevConfig* config) {
+    u32 hash = 0;
+    for(int i = 0; i < config->num_stages; i++) {
+        hash ^= (config->stages[i].color_op << (i * 4));
+        hash ^= (config->stages[i].alpha_op << ((i * 4) + 2));
+    }
+    hash ^= (config->blend_mode << 24);
+    hash ^= (config->z_mode << 28);
+    return hash;
+}
+
+void apply_pipeline_state(const TevConfig* config) {
+    u32 new_hash = calculate_pipeline_hash(config);
+    
+    if(new_hash == current_state_hash) {
+        return; // State already active
+    }
+    
+    // Check cache
+    for(int i = 0; i < 64; i++) {
+        if(cached_states[i].valid && cached_states[i].tev_config_hash == new_hash) {
+            // State found in cache, minimal state changes needed
+            current_state_hash = new_hash;
+            return;
+        }
+    }
+    
+    // Apply full state change
+    for(int i = 0; i < config->num_stages; i++) {
+        apply_tev_stage_config(i, &config->stages[i]);
+    }
+    
+    GX_SetBlendMode(config->blend_mode, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
+    GX_SetZMode(config->z_mode, GX_LEQUAL, GX_TRUE);
+    
+    // Cache the state
+    int cache_slot = new_hash % 64;
+    cached_states[cache_slot].tev_config_hash = new_hash;
+    cached_states[cache_slot].valid = true;
+    current_state_hash = new_hash;
+}</code></pre>
+
+                <h2>Hardware Debugging and Profiling</h2>
+
+                <h3>GPU Performance Counters</h3>
+                <pre><code>// Access hardware performance counters for optimization
+void enable_gpu_profiling() {
+    // Enable performance counter collection
+    GX_SetGPMetric(GX_PERF0_VERTICES, GX_PERF1_TRIANGLES);
+    
+    // Reset counters
+    GX_ClearGPMetric();
+    
+    // Start measurement
+    GX_SetGPMetric(GX_PERF0_TRIANGLES_CULLED, GX_PERF1_TEV_CYCLES);
+}
+
+void collect_gpu_metrics() {
+    u32 triangles_processed, triangles_culled;
+    u32 tev_cycles, vertex_cycles;
+    
+    // Read performance counters
+    GX_ReadGPMetric(&triangles_processed, &triangles_culled);
+    
+    // Calculate efficiency metrics
+    f32 culling_efficiency = (f32)triangles_culled / triangles_processed;
+    f32 gpu_utilization = (f32)tev_cycles / (243000000 / 60); // GPU cycles per frame
+    
+    printf("GPU Stats: %d triangles, %.1f%% culled, %.1f%% GPU util\n",
+           triangles_processed, culling_efficiency * 100.0f, gpu_utilization * 100.0f);
+}</code></pre>
+
+                <h3>Hardware State Validation</h3>
+                <pre><code>// Validate hardware state for debugging
+void validate_gpu_state() {
+    // Check for invalid TEV configurations
+    for(int stage = 0; stage < 16; stage++) {
+        if(!GX_GetTevStageEnabled(stage)) continue;
+        
+        // Validate texture bindings
+        u8 texmap = GX_GetTevOrder(stage) & 0x7;
+        if(texmap != GX_TEXMAP_NULL && !GX_GetTexObjValid(texmap)) {
+            printf("Warning: TEV stage %d references invalid texture %d\n", stage, texmap);
+        }
+        
+        // Check for impossible color combinations
+        u8 color_inputs[4];
+        GX_GetTevColorIn(stage, &color_inputs[0], &color_inputs[1], 
+                        &color_inputs[2], &color_inputs[3]);
+        
+        // Validate input availability
+        for(int i = 0; i < 4; i++) {
+            if(color_inputs[i] == GX_CC_TEXC && texmap == GX_TEXMAP_NULL) {
+                printf("Error: TEV stage %d uses texture color but no texture bound\n", stage);
+            }
+        }
+    }
+    
+    // Validate framebuffer configuration
+    if(GX_GetFramebufferWidth() > 720 || GX_GetFramebufferHeight() > 480) {
+        printf("Warning: Framebuffer size exceeds hardware limits\n");
+    }
+}</code></pre>
+
+                <div class="info-box">
+                    <h4>Hardware Programming Best Practices</h4>
+                    <ul>
+                        <li>Minimize TEV stage count - each stage has a hardware cost</li>
+                        <li>Use compressed texture formats (GX_TF_CMPR) to reduce bandwidth</li>
+                        <li>Batch state changes to minimize GPU pipeline flushes</li>
+                        <li>Leverage hardware lighting when possible instead of TEV calculations</li>
+                        <li>Use fixed-point vertex attributes for better cache efficiency</li>
+                        <li>Profile with hardware performance counters regularly</li>
+                        <li>Validate configurations in debug builds to catch errors early</li>
+                        <li>Consider multi-pass rendering for complex effects</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="Shaders.html">TEV Shaders</a> - High-level shader programming</li>
+                        <li><a href="gx_engine/TEV.html">GX TEV Stages</a> - TEV hardware reference</li>
+                        <li><a href="Performance.html">Performance Optimization</a> - GPU optimization strategies</li>
+                        <li><a href="AdvancedRendering.html">Advanced Rendering</a> - Complex rendering techniques</li>
+                        <li><a href="gx_engine/State-Management.html">State Management</a> - Hardware state control</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

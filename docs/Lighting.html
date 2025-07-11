@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lighting - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Lighting System</h1>
+      <p class="intro">The GX hardware provides a powerful, fixed-function lighting engine capable of simulating multiple light sources. This is not just about brightness; it's about defining the mood, shape, and dimension of your world through the artful manipulation of virtual photons.</p>
+
+      <section id="overview">
+        <h2>The Nature of Light in GX</h2>
+        <p>The GPU calculates lighting on a per-vertex basis. For each vertex, it considers:</p>
+        <ul>
+          <li>The vertex's normal vector (its orientation).</li>
+          <li>The material color associated with the vertex.</li>
+          <li>The color and position/direction of active light sources.</li>
+          <li>An optional ambient light color for the whole scene.</li>
+        </ul>
+        <p>The result of this calculation is a color that gets passed down to the TEV stages for further processing. This is the "rasterized color" input in the TEV pipeline.</p>
+      </section>
+
+      <section id="configuring-light">
+        <h2>Configuring a Light Source</h2>
+        <p>You can configure up to 8 simultaneous hardware lights. Each light is represented by a <code>GXLightObj</code>.</p>
+        <pre><code class="language-cpp">// Define a light object
+GXLightObj light_object;
+
+// Define the light's color
+GXColor light_color = { 255, 255, 255, 255 }; // Bright white
+
+// Set the light's position in 3D space
+// Note: The light's position is transformed by the ModelView matrix,
+// so you typically define it in world coordinates.
+guVector light_pos = { 100.0f, 200.0f, -50.0f };
+
+// Initialize the light object with its color and position
+GX_InitLightPos(&light_object, light_pos.x, light_pos.y, light_pos.z);
+GX_InitLightColor(&light_object, light_color);
+
+// Load the light object into a specific hardware light slot (e.g., GX_LIGHT0)
+GX_LoadLightObj(&light_object, GX_LIGHT0);
+</code></pre>
+      </section>
+
+      <section id="enabling-lighting">
+        <h2>Enabling Lighting</h2>
+        <p>Once lights are configured, you must enable lighting calculations for the geometry you're about to draw. This is done by specifying a color source for material and ambient light, and by enabling specific light channels.</p>
+        <pre><code class="language-cpp">// Use the vertex color as the material color source
+GX_SetChanMatColor(GX_COLOR0A0, (GXColor){255, 255, 255, 255});
+
+// Set an ambient light color for the scene
+GX_SetChanAmbColor(GX_COLOR0A0, (GXColor){50, 50, 50, 255});
+
+// Enable lighting for the color channel (GX_COLOR0A0)
+// This tells the GPU to perform lighting calculations and output the result
+// as the rasterized vertex color.
+GX_SetChanCtrl(GX_COLOR0A0,      // Channel to configure
+               GX_ENABLE,        // Enable lighting
+               GX_SRC_REG,       // Ambient source: use the ambient register we set
+               GX_SRC_REG,       // Material source: use the material register we set
+               GX_LIGHT0,        // Enable light mask (just light 0 in this case)
+               GX_DF_CLAMP,      // Diffuse function: clamp to 0-255 range
+               GX_AF_NONE);      // Attenuation function: none
+</code></pre>
+        <p>With this setup, any subsequent geometry drawn will be dynamically lit by <code>GX_LIGHT0`, and the resulting colors will be ready for texturing in the TEV stages.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Pipeline - Wii GX Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+        <h1>Asset Pipeline</h1>
+        <p>
+            An "asset pipeline" is the process of taking assets like images and 3D models from their creation format (like PNG or FBX) and converting them into a format that is optimized for the Wii's hardware. This is a crucial step for any serious project.
+        </p>
+
+        <h2>Texture Pipeline: TPL Files</h2>
+        <p>
+            The most common format for storing textures on the Wii is the <strong>TPL (Texture Palette Library)</strong> file. A TPL file can contain multiple textures and their mipmaps in a single file, already converted into a hardware-friendly format like `GX_TF_CMPR`.
+        </p>
+        <p>The typical workflow is:</p>
+        <ol>
+            <li>Create your texture in an image editor and save it as a PNG.</li>
+            <li>Use a command-line tool like <strong>wimgt</strong> (part of the devkitPro toolchain) to convert the PNG into a TPL file. This tool can also generate mipmaps and convert the image to the optimal compressed format.</li>
+            <li>Embed the TPL file into your DOL executable or load it from the SD card.</li>
+            <li>Use the `libtpl` library to load the TPL file and extract the textures from it at runtime.</li>
+        </ol>
+
+        <h3>Example: Loading a Texture from a TPL</h3>
+        <pre><code class="c">
+#include &lt;tpl.h&gt;
+#include &lt;ogc/gx.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;malloc.h&gt;
+
+// Assume you have a TPL file named "textures.tpl" in your data directory
+
+void load_texture_from_tpl() {
+    TPLFile tpl_file;
+    GXTexObj texture_obj;
+    void *tpl_data = NULL;
+    FILE *f = NULL;
+    long size;
+
+    // Open the TPL file from the SD card
+    f = fopen("sd:/apps/my_app/textures.tpl", "rb");
+    if (!f) {
+        printf("Could not open TPL file!\n");
+        return;
+    }
+
+    // Read the whole file into memory
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    tpl_data = memalign(32, size);
+    fread(tpl_data, 1, size, f);
+    fclose(f);
+
+    // Open the TPL data from memory
+    s32 result = TPL_OpenTPLFromMemory(&tpl_file, tpl_data, size);
+    if (result != TPL_SUCCESS) {
+        printf("Failed to open TPL from memory\n");
+        free(tpl_data);
+        return;
+    }
+
+    // Get the first texture (index 0) from the TPL file
+    result = TPL_GetTexture(&tpl_file, 0, &texture_obj);
+    if (result != TPL_SUCCESS) {
+        printf("Failed to get texture from TPL\n");
+        TPL_CloseTPLFile(&tpl_file);
+        free(tpl_data);
+        return;
+    }
+
+    // Now, load the texture object into the GPU
+    GX_LoadTexObj(&texture_obj, GX_TEXMAP0);
+
+    printf("Texture loaded successfully!\n");
+
+    // The TPL data can be freed after you've initialized the texture objects
+    TPL_CloseTPLFile(&tpl_file);
+    free(tpl_data);
+}
+        </code></pre>
+
+        <h2>Model Pipeline: BMD/BDL Files</h2>
+        <p>
+            While you can draw models by sending vertices manually (`GX_Begin`/`GX_End`), this is inefficient for complex models. The standard format for models on the GameCube and Wii is <strong>BMD (Binary Model Data)</strong> or its variant, BDL. These files contain all the vertex data, material information, rigging/skinning data, and animation clips for a model.
+        </p>
+        <p>
+            There is no standard `libogc` library for loading BMD files, as they are complex and often tied to a specific game's engine. Most homebrew projects either write their own simple model format or use a third-party library designed to handle BMDs. The process generally involves parsing the binary file to extract vertex data and then setting up the appropriate GX commands to render it, often using display lists for performance.
+        </p>
+
+        <h2>Embedding Assets with `GRIT`</h2>
+        <p>
+            For small assets, it's often easiest to embed them directly into your application's executable (`.dol`) file. The <strong>GRIT (GBA Raster Image Transmogrifier)</strong> tool, despite its name, is excellent for this. It can take an image or any binary file and convert it into a C header file.
+        </p>
+        <p>You can then simply `#include` this header in your code to get access to the asset data as a C array, which you can pass directly to GX or other libraries. This avoids the need for file I/O from an SD card or DVD.</p>
+    </main>
+  </div>
+</body>
+</html>

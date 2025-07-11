@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX Pixel Processing - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>GX Pixel Processing</h1>
+            <p>After a primitive is rasterized and passes through the TEV stages, each resulting pixel goes through a final series of tests and operations before being written into the Embedded Framebuffer (EFB). This part of the pipeline handles depth, transparency, and other per-pixel effects.</p>
+
+            <h2>The Z-Buffer (Depth Testing)</h2>
+            <p>The Z-buffer is a region of memory that stores a depth value (Z-value) for each pixel on the screen. When GX rasterizes a new pixel, it compares the new pixel's Z-value with the value already in the Z-buffer at that location. This is called the Z-test.</p>
+            <p>This mechanism ensures that objects closer to the camera correctly obscure objects that are farther away, regardless of the order they are drawn in.</p>
+            <p>You configure the Z-buffer behavior with <code>GX_SetZMode</code>.</p>
+            <pre><code class="language-c">
+#include &lt;gx.h&gt;
+
+// A standard Z-buffer setup
+GX_SetZMode(
+    GX_TRUE,        // Enable Z-buffering
+    GX_LEQUAL,      // Z-test function: pass if new Z is less than or equal to existing Z
+    GX_TRUE         // Enable updating the Z-buffer with the new Z value if the test passes
+);
+            </code></pre>
+            <p>For this to work, you must have allocated a Z-buffer when you set up your framebuffer and cleared it at the start of each frame.</p>
+
+            <h2>Alpha Blending (Transparency)</h2>
+            <p>Alpha blending combines the color of a new pixel (the "source") with the color of the pixel already in the framebuffer (the "destination"). This is how transparency effects are achieved. The blending behavior is controlled by the source pixel's alpha value.</p>
+            <p>You configure blending with <code>GX_SetBlendMode</code>.</p>
+            <pre><code class="language-c">
+// A standard setup for alpha blending (e.g., for smoke, glass, etc.)
+GX_SetBlendMode(
+    GX_BM_BLEND,    // Blend mode: use a blending equation
+    GX_BL_SRCALPHA, // Source factor: use the source pixel's alpha
+    GX_BL_INVSRCALPHA, // Destination factor: use (1 - source pixel's alpha)
+    GX_LO_NOOP      // Logic operation: do nothing special
+);
+            </code></pre>
+            <p>This configuration implements the standard alpha blending formula: <strong><code>FinalColor = (SrcColor * SrcAlpha) + (DstColor * (1 - SrcAlpha))</code></strong>. This means that a source pixel with an alpha of 1.0 will be fully opaque, while a source pixel with an alpha of 0.0 will be fully transparent.</p>
+            <p><strong>Important:</strong> For correct transparency, you must draw all opaque objects first, then draw all transparent objects from farthest to nearest.</p>
+
+            <h2>The Final Step: Copying to the XFB</h2>
+            <p>All rendering operations write to an internal buffer called the EFB (Embedded Framebuffer). This buffer is not directly visible on the screen. The final step in a render loop is to copy the contents of the EFB to the XFB (External Framebuffer), which is the memory that the Video Interface (VI) reads from to generate the TV signal.</p>
+            <p>This is done with <code>GX_CopyDisp</code>.</p>
+            <pre><code class="language-c">
+// At the end of your drawing loop for a frame:
+
+// 'framebuffer' is a pointer to the XFB we want to display next.
+// 'GX_TRUE' tells GX to clear the EFB after the copy is complete.
+GX_CopyDisp(framebuffer, GX_TRUE);
+
+// Signal that all drawing for this frame is done.
+GX_DrawDone();
+
+// Now, tell the VI to use the new framebuffer and wait for VSync.
+VIDEO_SetNextFramebuffer(framebuffer);
+VIDEO_Flush();
+VIDEO_WaitVSync();
+            </code></pre>
+            <p>This process, often combined with double buffering (using two XFBs and swapping between them each frame), ensures a smooth, tear-free image on the screen.</p>
+
+            <h2>Key Pixel Processing Functions</h2>
+            <div class="function-list">
+                <div class="function-item">
+                    <strong>GX_SetZMode(u8 enable, u8 func, u8 update_enable)</strong>
+                    <p>Configures the Z-buffer test, including the comparison function (e.g., <code>GX_LEQUAL</code>, <code>GX_GEQUAL</code>).</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_SetBlendMode(u8 type, u8 src_fact, u8 dst_fact, u8 op)</strong>
+                    <p>Sets the equation for alpha blending between source and destination pixels.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_SetColorUpdate(u8 enable)</strong>
+                    <p>Enables or disables writing color data to the EFB. Can be used to draw "invisible" objects that only update the Z-buffer.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_SetAlphaUpdate(u8 enable)</strong>
+                    <p>Enables or disables writing alpha data to the EFB.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_CopyDisp(void *dest, u8 clear)</strong>
+                    <p>Copies the final rendered image from the EFB to the visible XFB.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>

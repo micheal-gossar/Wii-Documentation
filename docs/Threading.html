@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threading - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item active">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › System › Threading</nav>
+            </div>
+            <h1>Threading</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+                <h2>Overview</h2>
+                <p>The Nintendo Wii features a single-core PowerPC processor that supports cooperative multitasking through the LWP (Lightweight Process) library. This enables concurrent execution of tasks such as game logic, I/O operations, audio streaming, and background loading without blocking the main thread.</p>
+
+                <h2>LWP Threading System</h2>
+                <p>libogc provides a comprehensive threading API through the LWP library, offering thread creation, synchronization primitives, and priority-based scheduling:</p>
+
+                <h3>Basic Thread Creation</h3>
+                <pre><code>#include &lt;ogc/lwp.h&gt;
+#include &lt;ogc/mutex.h&gt;
+#include &lt;ogc/cond.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+#define THREAD_STACK_SIZE 8192
+#define WORKER_THREAD_PRIORITY 80
+#define MAIN_THREAD_PRIORITY 64
+
+static lwp_t worker_thread;
+static lwp_t audio_thread;
+static u8 worker_stack[THREAD_STACK_SIZE] ATTRIBUTE_ALIGN(8);
+static u8 audio_stack[THREAD_STACK_SIZE] ATTRIBUTE_ALIGN(8);
+
+// Worker thread function
+void* worker_thread_func(void* arg) {
+    int* counter = (int*)arg;
+    
+    while(1) {
+        printf("Worker thread iteration: %d\n", (*counter)++);
+        
+        // Yield control to other threads
+        LWP_YieldThread();
+        
+        // Sleep for 1 second
+        usleep(1000000);
+    }
+    return NULL;
+}
+
+int main(int argc, char **argv) {
+    int worker_counter = 0;
+    
+    // Initialize video and console
+    VIDEO_Init();
+    console_init(xfb, 20, 20, rmode->fbWidth, rmode->xfbHeight, 
+                 rmode->fbWidth * VI_DISPLAY_PIX_SZ);
+    
+    // Create worker thread
+    if(LWP_CreateThread(&worker_thread,         // Thread handle
+                        worker_thread_func,     // Entry point
+                        &worker_counter,        // Argument
+                        worker_stack,           // Stack memory
+                        THREAD_STACK_SIZE,      // Stack size
+                        WORKER_THREAD_PRIORITY) != 0) {
+        printf("Failed to create worker thread!\n");
+        return -1;
+    }
+    
+    // Main game loop
+    while(1) {
+        // Process input
+        PAD_ScanPads();
+        if(PAD_ButtonsDown(0) & PAD_BUTTON_START) break;
+        
+        // Main thread work
+        printf("Main thread running...\n");
+        
+        // Wait for next frame
+        VIDEO_WaitVSync();
+    }
+    
+    // Clean shutdown
+    LWP_JoinThread(worker_thread, NULL);
+    return 0;
+}</code></pre>
+
+                <h2>Thread Synchronization</h2>
+                <p>Proper synchronization is crucial for thread-safe programming on the Wii:</p>
+
+                <h3>Mutexes</h3>
+                <pre><code>static mutex_t shared_data_mutex = LWP_MUTEX_NULL;
+static int shared_counter = 0;
+
+void initialize_threading() {
+    // Initialize mutex
+    LWP_MutexInit(&shared_data_mutex, false);
+}
+
+void* producer_thread(void* arg) {
+    while(1) {
+        // Lock mutex before accessing shared data
+        LWP_MutexLock(shared_data_mutex);
+        
+        shared_counter++;
+        printf("Producer: incremented counter to %d\n", shared_counter);
+        
+        // Unlock mutex
+        LWP_MutexUnlock(shared_data_mutex);
+        
+        usleep(500000); // 0.5 seconds
+    }
+    return NULL;
+}
+
+void* consumer_thread(void* arg) {
+    while(1) {
+        LWP_MutexLock(shared_data_mutex);
+        
+        if(shared_counter > 0) {
+            shared_counter--;
+            printf("Consumer: decremented counter to %d\n", shared_counter);
+        }
+        
+        LWP_MutexUnlock(shared_data_mutex);
+        
+        usleep(750000); // 0.75 seconds
+    }
+    return NULL;
+}
+
+void cleanup_threading() {
+    LWP_MutexDestroy(shared_data_mutex);
+}</code></pre>
+
+                <h3>Condition Variables</h3>
+                <pre><code>static mutex_t queue_mutex = LWP_MUTEX_NULL;
+static cond_t queue_condition = LWP_COND_NULL;
+static int queue_size = 0;
+static bool shutdown_requested = false;
+
+typedef struct {
+    int data[256];
+    int head;
+    int tail;
+    int count;
+} WorkQueue;
+
+static WorkQueue work_queue = {0};
+
+void initialize_work_queue() {
+    LWP_MutexInit(&queue_mutex, false);
+    LWP_CondInit(&queue_condition);
+}
+
+void enqueue_work(int work_item) {
+    LWP_MutexLock(queue_mutex);
+    
+    if(work_queue.count < 256) {
+        work_queue.data[work_queue.tail] = work_item;
+        work_queue.tail = (work_queue.tail + 1) % 256;
+        work_queue.count++;
+        
+        // Signal waiting threads
+        LWP_CondSignal(queue_condition);
+    }
+    
+    LWP_MutexUnlock(queue_mutex);
+}
+
+int dequeue_work() {
+    LWP_MutexLock(queue_mutex);
+    
+    // Wait for work or shutdown
+    while(work_queue.count == 0 && !shutdown_requested) {
+        LWP_CondWait(queue_condition, queue_mutex);
+    }
+    
+    int work_item = -1;
+    if(work_queue.count > 0) {
+        work_item = work_queue.data[work_queue.head];
+        work_queue.head = (work_queue.head + 1) % 256;
+        work_queue.count--;
+    }
+    
+    LWP_MutexUnlock(queue_mutex);
+    return work_item;
+}
+
+void* worker_thread_proc(void* arg) {
+    while(!shutdown_requested) {
+        int work_item = dequeue_work();
+        if(work_item >= 0) {
+            // Process work item
+            printf("Processing work item: %d\n", work_item);
+            usleep(100000); // Simulate work
+        }
+    }
+    return NULL;
+}
+
+void shutdown_work_queue() {
+    LWP_MutexLock(queue_mutex);
+    shutdown_requested = true;
+    LWP_CondBroadcast(queue_condition);
+    LWP_MutexUnlock(queue_mutex);
+}</code></pre>
+
+                <h2>Thread Priorities and Scheduling</h2>
+                <p>The Wii uses priority-based cooperative multitasking. Understanding priority levels is crucial for responsive applications:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Priority Range</th>
+                            <th>Usage</th>
+                            <th>Examples</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>0-31</td><td>System Critical</td><td>OS kernel threads, interrupt handlers</td></tr>
+                        <tr><td>32-63</td><td>High Priority</td><td>Audio threads, time-critical tasks</td></tr>
+                        <tr><td>64-95</td><td>Normal Priority</td><td>Main game thread, input processing</td></tr>
+                        <tr><td>96-127</td><td>Low Priority</td><td>Background loading, asset streaming</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Audio Thread Example</h3>
+                <pre><code>#include &lt;ogc/audio.h&gt;
+
+#define AUDIO_THREAD_PRIORITY 40
+#define AUDIO_BUFFER_SIZE 1024
+
+static lwp_t audio_thread_handle;
+static u8 audio_thread_stack[THREAD_STACK_SIZE] ATTRIBUTE_ALIGN(8);
+static bool audio_running = true;
+
+void* audio_thread_func(void* arg) {
+    s16 audio_buffer[AUDIO_BUFFER_SIZE];
+    
+    while(audio_running) {
+        // Generate audio samples
+        generate_audio_samples(audio_buffer, AUDIO_BUFFER_SIZE);
+        
+        // Submit to audio system
+        AUDIO_StopDMA();
+        AUDIO_InitDMA((u32)audio_buffer, AUDIO_BUFFER_SIZE * sizeof(s16));
+        AUDIO_StartDMA();
+        
+        // Wait for DMA completion
+        while(AUDIO_GetDMABytesLeft() > 0) {
+            LWP_YieldThread();
+        }
+    }
+    
+    return NULL;
+}
+
+void start_audio_thread() {
+    LWP_CreateThread(&audio_thread_handle,
+                     audio_thread_func,
+                     NULL,
+                     audio_thread_stack,
+                     THREAD_STACK_SIZE,
+                     AUDIO_THREAD_PRIORITY);
+}
+
+void stop_audio_thread() {
+    audio_running = false;
+    LWP_JoinThread(audio_thread_handle, NULL);
+}</code></pre>
+
+                <h2>Thread-Safe Memory Management</h2>
+                <p>When using multiple threads, memory allocation and deallocation must be handled carefully:</p>
+
+                <h3>Thread-Safe Allocator</h3>
+                <pre><code>static mutex_t allocator_mutex = LWP_MUTEX_NULL;
+
+void init_thread_safe_allocator() {
+    LWP_MutexInit(&allocator_mutex, false);
+}
+
+void* thread_safe_malloc(size_t size) {
+    LWP_MutexLock(allocator_mutex);
+    void* ptr = malloc(size);
+    LWP_MutexUnlock(allocator_mutex);
+    return ptr;
+}
+
+void thread_safe_free(void* ptr) {
+    if(ptr) {
+        LWP_MutexLock(allocator_mutex);
+        free(ptr);
+        LWP_MutexUnlock(allocator_mutex);
+    }
+}
+
+// Thread-local storage alternative using thread IDs
+#define MAX_THREADS 8
+
+typedef struct {
+    lwp_t thread_id;
+    void* thread_data;
+} ThreadLocalData;
+
+static ThreadLocalData thread_local_storage[MAX_THREADS];
+static mutex_t tls_mutex = LWP_MUTEX_NULL;
+
+void* get_thread_local_data() {
+    lwp_t current_thread = LWP_GetSelf();
+    
+    LWP_MutexLock(tls_mutex);
+    
+    for(int i = 0; i < MAX_THREADS; i++) {
+        if(thread_local_storage[i].thread_id == current_thread) {
+            void* data = thread_local_storage[i].thread_data;
+            LWP_MutexUnlock(tls_mutex);
+            return data;
+        }
+    }
+    
+    LWP_MutexUnlock(tls_mutex);
+    return NULL;
+}
+
+void set_thread_local_data(void* data) {
+    lwp_t current_thread = LWP_GetSelf();
+    
+    LWP_MutexLock(tls_mutex);
+    
+    // Find existing entry or create new one
+    for(int i = 0; i < MAX_THREADS; i++) {
+        if(thread_local_storage[i].thread_id == current_thread ||
+           thread_local_storage[i].thread_id == LWP_THREAD_NULL) {
+            thread_local_storage[i].thread_id = current_thread;
+            thread_local_storage[i].thread_data = data;
+            break;
+        }
+    }
+    
+    LWP_MutexUnlock(tls_mutex);
+}</code></pre>
+
+                <h2>Asynchronous I/O Patterns</h2>
+                <p>Implement non-blocking I/O operations for better responsiveness:</p>
+
+                <h3>Asynchronous File Loading</h3>
+                <pre><code>typedef struct {
+    char filename[256];
+    void* buffer;
+    size_t size;
+    bool completed;
+    bool success;
+} AsyncLoadRequest;
+
+static AsyncLoadRequest load_requests[16];
+static mutex_t load_mutex = LWP_MUTEX_NULL;
+static cond_t load_condition = LWP_COND_NULL;
+static int pending_loads = 0;
+
+void* file_loader_thread(void* arg) {
+    while(1) {
+        LWP_MutexLock(load_mutex);
+        
+        // Wait for load requests
+        while(pending_loads == 0) {
+            LWP_CondWait(load_condition, load_mutex);
+        }
+        
+        // Find next request to process
+        AsyncLoadRequest* request = NULL;
+        for(int i = 0; i < 16; i++) {
+            if(!load_requests[i].completed && load_requests[i].filename[0] != '\0') {
+                request = &load_requests[i];
+                break;
+            }
+        }
+        
+        LWP_MutexUnlock(load_mutex);
+        
+        if(request) {
+            // Load file
+            FILE* file = fopen(request->filename, "rb");
+            if(file) {
+                fseek(file, 0, SEEK_END);
+                size_t file_size = ftell(file);
+                fseek(file, 0, SEEK_SET);
+                
+                request->buffer = malloc(file_size);
+                if(request->buffer) {
+                    request->size = fread(request->buffer, 1, file_size, file);
+                    request->success = (request->size == file_size);
+                } else {
+                    request->success = false;
+                }
+                
+                fclose(file);
+            } else {
+                request->success = false;
+            }
+            
+            // Mark as completed
+            LWP_MutexLock(load_mutex);
+            request->completed = true;
+            pending_loads--;
+            LWP_MutexUnlock(load_mutex);
+        }
+    }
+    
+    return NULL;
+}
+
+int async_load_file(const char* filename) {
+    LWP_MutexLock(load_mutex);
+    
+    // Find free slot
+    int request_id = -1;
+    for(int i = 0; i < 16; i++) {
+        if(load_requests[i].filename[0] == '\0') {
+            request_id = i;
+            break;
+        }
+    }
+    
+    if(request_id >= 0) {
+        strncpy(load_requests[request_id].filename, filename, 255);
+        load_requests[request_id].completed = false;
+        load_requests[request_id].success = false;
+        load_requests[request_id].buffer = NULL;
+        load_requests[request_id].size = 0;
+        
+        pending_loads++;
+        LWP_CondSignal(load_condition);
+    }
+    
+    LWP_MutexUnlock(load_mutex);
+    return request_id;
+}
+
+bool check_load_complete(int request_id, void** buffer, size_t* size) {
+    if(request_id < 0 || request_id >= 16) return false;
+    
+    LWP_MutexLock(load_mutex);
+    
+    bool completed = load_requests[request_id].completed;
+    if(completed) {
+        *buffer = load_requests[request_id].buffer;
+        *size = load_requests[request_id].size;
+        
+        // Clear request
+        load_requests[request_id].filename[0] = '\0';
+    }
+    
+    LWP_MutexUnlock(load_mutex);
+    return completed;
+}</code></pre>
+
+                <div class="info-box">
+                    <h4>Threading Best Practices</h4>
+                    <ul>
+                        <li>Use high priorities (32-63) for time-critical tasks like audio</li>
+                        <li>Keep the main thread at normal priority (64-95) for responsiveness</li>
+                        <li>Use low priorities (96-127) for background tasks</li>
+                        <li>Always initialize mutexes and condition variables</li>
+                        <li>Use <code>LWP_YieldThread()</code> in tight loops to be cooperative</li>
+                        <li>Align thread stacks to 8-byte boundaries</li>
+                        <li>Handle thread cleanup properly with <code>LWP_JoinThread()</code></li>
+                        <li>Minimize shared data and use proper synchronization</li>
+                    </ul>
+                </div>
+
+                <div class="info-box">
+                    <h4>See Also</h4>
+                    <ul>
+                        <li><a href="docs/MemoryManagement.html">Memory Management</a> - Thread-safe memory allocation</li>
+                        <li><a href="docs/Performance.html">Performance Optimization</a> - Multithreading for performance</li>
+                        <li><a href="docs/AudioProcessing.html">Audio Processing</a> - Audio thread implementation</li>
+                        <li><a href="docs/AssetPipeline.html">Asset Pipeline</a> - Asynchronous asset loading</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="search-index.js" defer></script>
+            <p>The Wii's PowerPC processor, while single-core, supports a lightweight threading model. This allows you to perform multiple tasks concurrently, such as running game logic, handling I/O, and streaming audio without freezing the main game loop.</p>
+            
+            <h2>LWP: Lightweight Processes</h2>
+            <p>Threading is managed by the LWP (Lightweight Process) library, which is part of libogc. You can create threads, set their priorities, and manage their execution. This is crucial for responsive applications.</p>
+            <pre><code>
+#include &lt;ogc/lwp.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+#define THREAD_STACK_SIZE 8192
+
+static lwp_t thread_handle;
+static u8 thread_stack[THREAD_STACK_SIZE];
+
+void* worker_thread(void* arg) {
+    int counter = 0;
+    while(1) {
+        printf("Worker thread says: %d\n", counter++);
+        // No need to yield manually, sleep will do it.
+        sleep(1); // Sleep for 1 second
+    }
+    return NULL;
+}
+
+int main(int argc, char **argv) {
+    // ... (VIDEO_Init, console_init, etc.)
+
+    // Create the thread
+    LWP_CreateThread(&thread_handle,   // Handle
+                     worker_thread,    // Entry point function
+                     NULL,             // Argument to pass to the thread
+                     thread_stack,     // Stack memory
+                     THREAD_STACK_SIZE,// Stack size
+                     80);              // Priority (0-127, higher is more important)
+
+    while(1) {
+        printf("Main thread is running...\n");
+        VIDEO_WaitVSync();
+        
+        // Check for exit condition
+        PAD_ScanPads();
+        if (PAD_ButtonsDown(0) & PAD_BUTTON_START) {
+            break;
+        }
+    }
+
+    // It's good practice to join threads, though in a simple homebrew app
+    // you might just exit.
+    // LWP_JoinThread(thread_handle, NULL);
+
+    return 0;
+}
+            </code></pre>
+            <h3>Key Considerations</h3>
+            <ul>
+                <li><strong>Priority:</strong> Higher priority threads run more often. Your main game loop should generally have a higher priority than background tasks like audio streaming.</li>
+                <li><strong>Synchronization:</strong> When multiple threads access the same data, you must use synchronization primitives like mutexes (<code>LWP_MutexInit</code>, <code>LWP_MutexLock</code>, <code>LWP_MutexUnlock</code>) to prevent race conditions and data corruption.</li>
+                <li><strong>Stack Size:</strong> Each thread needs its own stack. If the stack is too small, you'll get mysterious crashes when the thread's function calls go too deep.</li>
+                <li><strong>Thread Safety:</strong> Not all functions in standard libraries are thread-safe. Be careful when calling functions like `malloc` or `printf` from multiple threads without protection. Libogc's standard I/O is generally safe.</li>
+            </ul>
+        </main>
+    </div>
+</body>
+</html>

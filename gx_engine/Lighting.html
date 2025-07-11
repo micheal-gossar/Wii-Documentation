@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX Lighting - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>GX Hardware Lighting</h1>
+            <p>The GX graphics pipeline includes a fixed-function hardware lighting engine that can calculate the effect of up to 8 simultaneous lights on your geometry. This allows for dynamic, per-vertex lighting with minimal CPU overhead. The lighting calculation is performed after vertex transformation but before the TEV stages.</p>
+
+            <h2>The Lighting Model</h2>
+            <p>GX uses a standard Blinn-Phong lighting model. The final color of a vertex is the sum of four components:</p>
+            <ul>
+                <li><strong>Emissive Color:</strong> The intrinsic color of the material, which is not affected by any lights.</li>
+                <li><strong>Ambient Color:</strong> A constant, directionless light that illuminates all parts of the model equally, preventing any part from being completely black.</li>
+                <li><strong>Diffuse Color:</strong> The main directional component of light. Its intensity depends on the angle between the light source and the vertex normal. This is what gives objects their shaded appearance.</li>
+                <li><strong>Specular Color:</strong> The highlight component that simulates shininess. Its intensity depends on the angle between the light, the viewer, and the vertex normal.</li>
+            </ul>
+
+            <h2>Enabling Lighting</h2>
+            <p>To use hardware lighting, you must enable it for each color channel you want it to affect.</p>
+            <pre><code class="language-c">
+#include &lt;gx.h&gt;
+
+// Enable lighting for the main color channel (alpha is unaffected)
+GX_SetNumChans(1); // We are using one color channel
+GX_SetChanCtrl(
+    GX_COLOR0A0,    // Channel to configure
+    GX_ENABLE,      // Enable lighting
+    GX_SRC_REG,     // Ambient source: from a register
+    GX_SRC_REG,     // Material source: from a register
+    GX_LIGHT0,      // Light mask: enable light 0
+    GX_DF_CLAMP,    // Diffuse function: clamp result to [0, 1]
+    GX_AF_SPEC      // Attenuation function: use specular attenuation
+);
+            </code></pre>
+            <p>This is a typical setup. It tells GX that for the main color channel (<code>GX_COLOR0A0</code>), the ambient and material colors will be set via registers, and that light 0 should be active.</p>
+
+            <h2>Setting Up a Light</h2>
+            <p>You can configure up to 8 hardware lights. Setting up a light involves defining its color and its position or direction.</p>
+            <pre><code class="language-c">
+// Define a light object
+GXLightObj myLight;
+
+// Set the color of the light (a bright white light)
+GXColor lightColor = { 255, 255, 255, 255 };
+
+// Set the position of the light in 3D space
+// The light's position is transformed by the modelview matrix, so it exists in world space.
+guVector lightPos = { 10.0f, 10.0f, 5.0f };
+
+// Initialize the light object
+GX_InitLightObj(&myLight, lightColor);
+GX_SetLightPos(&myLight, lightPos.x, lightPos.y, lightPos.z);
+
+// Load the light object into a hardware light slot
+GX_LoadLightObj(&myLight, GX_LIGHT0);
+            </code></pre>
+            <p>This code configures a white point light and loads it into the <code>GX_LIGHT0</code> slot, which we previously enabled in the channel controls.</p>
+
+            <h2>Defining Material Properties</h2>
+            <p>For lighting to work, the objects being lit must have material colors defined. These colors determine how the object reflects the light.</p>
+            <pre><code class="language-c">
+// Set the material color that will be used for diffuse lighting.
+// This is the object's base color. Let's make it blue.
+GXColor materialColor = { 0, 0, 255, 255 };
+GX_SetChanMatColor(GX_COLOR0A0, materialColor);
+
+// Set the ambient color for the object.
+// This is a dim, bluish ambient light to give some color in shadows.
+GXColor ambientColor = { 30, 30, 80, 255 };
+GX_SetChanAmbColor(GX_COLOR0A0, ambientColor);
+            </code></pre>
+            <p>With these settings, the hardware will calculate the final vertex color based on the light's properties and the material's properties. The result is then passed to the TEV stages as the "rasterized color".</p>
+
+            <h2>Normals are Crucial</h2>
+            <p>Hardware lighting is entirely dependent on vertex normals. You must provide a normal for each vertex. The normal is a vector that should be perpendicular to the surface of the model at that vertex. GX uses the normal to calculate how much diffuse and specular light the vertex should receive.</p>
+            <pre><code class="language-c">
+// When defining your vertex format, you must include normals.
+GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+
+// When describing your vertex attributes, you must enable normals.
+GX_SetVtxDesc(GX_VA_NRM, GX_DIRECT); // or GX_INDEX8 / GX_INDEX16
+
+// When sending vertex data, you must provide the normal.
+GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
+    GX_Position3f32(x, y, z);
+    GX_Normal3f32(nx, ny, nz); // Provide the normal for this vertex
+    // ... other attributes ...
+GX_End();
+            </code></pre>
+            <p>Without correct normals, lighting calculations will be incorrect, and your model will look flat or strangely shaded.</p>
+
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>

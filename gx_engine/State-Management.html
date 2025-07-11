@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX State Management - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>GX State Management</h1>
+            <p>The GX graphics processor is a state machine. This means that at any given time, it has a set of internal registers and configurations that determine how it will process incoming vertex and pixel data. Efficiently managing this state is crucial for performance and for ensuring your graphics render as expected.</p>
+
+            <h2>What is "State"?</h2>
+            <p>In the context of GX, "state" refers to any setting that persists until it is explicitly changed. This includes:</p>
+            <ul>
+                <li><strong>Vertex Format:</strong> The current vertex attribute formats (VAT) and vertex descriptors.</li>
+                <li><strong>Matrices:</strong> The contents of all position/normal, projection, and texture matrices.</li>
+                <li><strong>TEV Stages:</strong> The configuration of all 16 TEV combiners and color registers.</li>
+                <li><strong>Lighting:</strong> The properties of all 8 hardware lights and the channel control settings.</li>
+                <li><strong>Pixel Processing:</strong> The current blend mode, Z-buffer mode, and color/alpha update settings.</li>
+                <li><strong>Texture Objects:</strong> Which textures are loaded into which texture map slots.</li>
+            </ul>
+
+            <h2>The Cost of Changing State</h2>
+            <p>Every time you call a <code>GX_Set...</code> function, you are inserting a command into the FIFO to change one of these internal states. While individual state changes are fast, they are not free. A program that changes state excessively will be bottlenecked by the CPU sending commands, not by the GPU's drawing speed.</p>
+            <p>For optimal performance, you should group your drawing operations by state. This is known as <strong>state sorting</strong>.</p>
+            
+            <h3>Example of State Sorting</h3>
+            <p>Imagine you need to draw two models: one uses texture A and one uses texture B.</p>
+            
+            <h4>Inefficient Approach (frequent state changes):</h4>
+            <pre><code class="language-c">
+// Draw part of Model 1
+GX_LoadTexObj(&texA, GX_TEXMAP0);
+DrawModel1_Part1();
+
+// Draw part of Model 2
+GX_LoadTexObj(&texB, GX_TEXMAP0);
+DrawModel2_Part1();
+
+// Draw another part of Model 1
+GX_LoadTexObj(&texA, GX_TEXMAP0);
+DrawModel1_Part2();
+            </code></pre>
+            <p>In this example, the texture is being changed back and forth, causing unnecessary state changes.</p>
+
+            <h4>Efficient Approach (state sorted):</h4>
+            <pre><code class="language-c">
+// --- Draw everything that uses Texture A ---
+GX_LoadTexObj(&texA, GX_TEXMAP0);
+DrawModel1_Part1();
+DrawModel1_Part2();
+
+// --- Draw everything that uses Texture B ---
+GX_LoadTexObj(&texB, GX_TEXMAP0);
+DrawModel2_Part1();
+            </code></pre>
+            <p>By grouping all drawing that uses texture A together, you reduce the number of expensive <code>GX_LoadTexObj</code> calls from three to two.</p>
+
+            <h2>Saving and Restoring State</h2>
+            <p>Libogc does not provide a high-level mechanism to save and restore the entire GX state. It is the programmer's responsibility to keep track of the current state and reset it when necessary.</p>
+            <p>A common practice is to write wrapper functions or create a state manager class that sets known "default" states at the beginning of a render loop or before drawing a specific type of object.</p>
+            <pre><code class="language-c">
+void SetDefaultRenderState() {
+    // Set a known blend mode
+    GX_SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_COPY);
+
+    // Set a known Z-mode
+    GX_SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+
+    // Set default TEV configuration (e.g., simple texturing)
+    GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+    GX_SetTevOp(GX_TEVSTAGE0, GX_MODULATE);
+    
+    // Disable all other TEV stages
+    GX_SetNumTevStages(1);
+}
+
+// In your main loop:
+void RenderScene() {
+    for (Model m : scene.models) {
+        // Set a known baseline state before drawing each model
+        SetDefaultRenderState();
+        
+        // Apply model-specific state changes
+        ApplyModelMaterial(m.material);
+        
+        // Draw the model
+        DrawModel(m);
+    }
+}
+            </code></pre>
+            <p>This approach prevents the state from a previously drawn object from incorrectly affecting the next one.</p>
+
+            <h2>Dirty State Tracking</h2>
+            <p>A more advanced technique is to implement a "dirty state" system. Your C/C++ code would have its own copy of the GX state. When you want to change a state (e.g., load a texture), you first check if your desired state is already the active state in your local copy. If it is, you do nothing. If it's different, you update your local copy and send the command to GX.</p>
+            <p>This prevents redundant state changes. For example, if you call <code>GX_LoadTexObj(&texA, GX_TEXMAP0)</code> twice in a row, a dirty state tracker would see that texture A is already loaded and would skip sending the second command to the GPU, saving CPU time.</p>
+
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>

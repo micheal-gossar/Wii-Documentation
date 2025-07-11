@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Streaming - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item active">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> › Audio › Audio Streaming</nav>
+            </div>
+            <h1>Audio Streaming</h1>
+            <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+            <section class="page-content">
+            <p>For large audio files like background music or dialogue, loading the entire sound into memory is inefficient. Audio streaming is the solution, allowing you to play audio directly from the DVD or SD card, piece by piece.</p>
+            
+            <h2>The Double-Buffer System</h2>
+            <p>Streaming relies on a double-buffering system. While the audio hardware is playing from one buffer, your code is busy filling the second buffer with the next chunk of data from the storage device. Once the first buffer is finished, the hardware seamlessly switches to the second, and the cycle repeats.</p>
+            <pre><code>
+// Conceptual Example of an Audio Streaming Loop
+#include &lt;asndlib.h&gt;
+#include &lt;tremor/ivorbisfile.h&gt; // For OGG Vorbis streaming
+
+#define STREAM_BUFFER_SIZE 4096
+
+static u8 stream_buffer[2][STREAM_BUFFER_SIZE] __attribute__((aligned(32)));
+static int current_buffer = 0;
+static OggVorbis_File ogg_file;
+static FILE* f;
+
+// This callback is triggered by ASND when it needs more audio data
+s32 MyAudioCallback(s32 voice) {
+    long ret;
+    int bitstream;
+
+    // Read the next chunk of OGG data
+    ret = ov_read(&ogg_file, (char*)stream_buffer[current_buffer], STREAM_BUFFER_SIZE, &bitstream);
+
+    if (ret == 0) { // End of file
+        return 0; // Signal to stop playback
+    } else if (ret < 0) { // Error in stream
+        return -1;
+    }
+
+    // Add the newly filled buffer to the sound queue
+    ASND_AddVoice(voice, stream_buffer[current_buffer], ret);
+    
+    // Switch to the other buffer for the next fill
+    current_buffer ^= 1;
+    
+    return ret; // Return bytes read
+}
+
+void PlayStreamedOgg(const char* path) {
+    f = fopen(path, "rb");
+    if (!f) return;
+
+    if (ov_open_callbacks(f, &ogg_file, NULL, 0, OV_CALLBACKS_DEFAULT) < 0) {
+        fclose(f);
+        return;
+    }
+
+    // Start the first two reads to fill both buffers
+    MyAudioCallback(0); // The voice is not used here, just for filling
+    MyAudioCallback(0);
+
+    // Play the stream using the callback
+    ASND_PlayStream(&ogg_file, ov_info(&ogg_file, -1)->rate, MyAudioCallback);
+}
+
+void StopStream() {
+    ASND_StopVoice(0); // Assuming voice 0 is the stream
+    ov_clear(&ogg_file);
+    if (f) fclose(f);
+}
+            </code></pre>
+            <p><strong>Note:</strong> This is a more realistic example using `libasnd` and `libvorbisidec` (Tremor) for OGG streaming. A robust implementation requires careful thread management, especially when reading from a slow device like a DVD, to avoid audio glitches or "starvation" (where the hardware runs out of data to play).</p>
+
+            <div class="info-box">
+                <h4>See Also</h4>
+                <ul>
+                    <li><a href="AudioProcessing.html">Audio Processing</a> - Core audio system setup</li>
+                    <li><a href="SpatialAudio.html">3D Audio</a> - Spatial audio positioning</li>
+                    <li><a href="Performance.html">Performance</a> - Audio performance optimization</li>
+                    <li><a href="Threading.html">Threading</a> - Thread management for streaming</li>
+                </ul>
+            </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

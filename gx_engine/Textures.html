@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX Textures - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>GX Textures</h1>
+            <p>Textures are images applied to the surface of 3D models to add detail, color, and realism. The GX engine has a sophisticated texturing unit that supports various formats, filtering modes, and mapping techniques.</p>
+
+            <h2>Texture Formats</h2>
+            <p>GX supports several texture formats, each with different trade-offs in terms of color depth, alpha support, and memory usage. One of the most common and efficient formats is <strong>CMPR (Compressed)</strong>, also known as S3TC or DXT1, which offers a good balance between quality and memory size.</p>
+            <p>Other formats include RGBA8 (32-bit uncompressed), RGB565 (16-bit), and I4/I8 (4/8-bit intensity).</p>
+
+            <h2>Loading a Texture</h2>
+            <p>Loading a texture involves three main steps: getting the texture data into memory, creating a GX texture object, and loading that object into a texture map slot.</p>
+
+            <h3>1. Get Texture Data</h3>
+            <p>First, you need the raw pixel data of your texture, typically from a file that has been converted to a GX-compatible format by a tool. For this example, assume you have raw texture data in an array.</p>
+            <pre><code class="language-c">
+// This would typically be loaded from a file.
+// The data must be 32-byte aligned.
+unsigned char myTextureData[] ATTRIBUTE_ALIGN(32) = {
+    // ... raw pixel data for a 64x64 texture ...
+};
+            </code></pre>
+
+            <h3>2. Initialize a Texture Object</h3>
+            <p>Next, you create a <code>GXTexObj</code> and use <code>GX_InitTexObj</code> to describe the texture's properties to GX. This tells GX the image's dimensions, format, and how it should be sampled.</p>
+            <pre><code class="language-c">
+#include &lt;gx.h&gt;
+
+GXTexObj myTexObj;
+
+// Initialize the texture object
+// Let's assume a 64x64 texture in RGBA8 format.
+GX_InitTexObj(&myTexObj, myTextureData, 64, 64, GX_TF_RGBA8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+            </code></pre>
+            <p>The parameters for <code>GX_InitTexObj</code> are:</p>
+            <ul>
+                <li><code>GXTexObj* obj</code>: Pointer to the texture object to initialize.</li>
+                <li><code>void* image_ptr</code>: Pointer to the raw texture data.</li>
+                <li><code>u16 width, u16 height</code>: Dimensions of the texture.</li>
+                <li><code>u8 format</code>: The texture's data format (e.g., <code>GX_TF_RGBA8</code>, <code>GX_TF_CMPR</code>).</li>
+                <li><code>u8 wrap_s, u8 wrap_t</code>: How to handle texture coordinates outside the [0, 1] range. <code>GX_CLAMP</code> clamps them to the edge, while <code>GX_REPEAT</code> tiles the texture.</li>
+                <li><code>u8 mipmap</code>: Whether to use mipmapping (<code>GX_TRUE</code>) or not (<code>GX_FALSE</code>).</li>
+            </ul>
+
+            <h3>3. Load the Texture Object into a Map Slot</h3>
+            <p>Finally, you load the configured texture object into one of the 8 available texture map slots (<code>GX_TEXMAP0</code> to <code>GX_TEXMAP7</code>). This makes the texture available to the TEV stages.</p>
+            <pre><code class="language-c">
+// Load our texture object into texture map slot 0.
+GX_LoadTexObj(&myTexObj, GX_TEXMAP0);
+            </code></pre>
+            <p>Once loaded, you can reference <code>GX_TEXMAP0</code> in a <code>GX_SetTevOrder</code> call to use this texture in the pixel pipeline.</p>
+
+            <h2>Texture Filtering</h2>
+            <p>Texture filtering determines the color of a pixel when the texture is magnified or minified. GX supports several filtering modes, which you can set on the texture object.</p>
+            <pre><code class="language-c">
+// Set filtering modes for the texture object
+// Minification filter: Linear interpolation between the 4 nearest texels.
+// Magnification filter: Linear interpolation.
+GX_InitTexObjLOD(&myTexObj, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+            </code></pre>
+            <p>Common filter modes include:</p>
+            <ul>
+                <li><strong><code>GX_NEAR</code></strong>: Point sampling. Fast but looks blocky up close.</li>
+                <li><strong><code>GX_LINEAR</code></strong>: Bilinear filtering. Smooths the texture, providing a much better look than nearest neighbor.</li>
+            </ul>
+            <p>Mipmapping can also be enabled to improve quality when textures are seen from a distance, preventing aliasing artifacts.</p>
+
+            <h2>Key Texture Functions</h2>
+            <div class="function-list">
+                <div class="function-item">
+                    <strong>GX_InitTexObj(GXTexObj *obj, void *img_ptr, u16 w, u16 h, u8 fmt, u8 wraps, u8 wrapt, u8 mipmap)</strong>
+                    <p>Initializes a texture object with its core properties.</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_LoadTexObj(GXTexObj *obj, u8 mapid)</strong>
+                    <p>Loads an initialized texture object into a specific texture map slot (e.g., <code>GX_TEXMAP0</code>).</p>
+                </div>
+                <div class="function-item">
+                    <strong>GX_InitTexObjLOD(GXTexObj *obj, u8 minfilt, u8 magfilt, f32 minlod, f32 maxlod, f32 lodbias, u8 biasclamp, u8 doedge, u8 maxaniso)</strong>
+                    <p>Sets advanced filtering and Level of Detail (LOD) parameters for a texture object.</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>

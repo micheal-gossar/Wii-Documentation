@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wii Features - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <div class="nav-section">
+                <div class="nav-title">Graphics</div>
+                <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+                <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+                <a href="Textures.html" class="nav-item">Texture Management</a>
+                <a href="Lighting.html" class="nav-item">Lighting System</a>
+                <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+                <a href="Performance.html" class="nav-item">Performance</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Input Systems</div>
+                <a href="WiimoteCore.html" class="nav-item">Wiimote Core</a>
+                <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+                <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+                <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+                <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+                <a href="IR.html" class="nav-item">IR Camera</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Audio</div>
+                <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+                <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+                <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">System</div>
+                <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+                <a href="Threading.html" class="nav-item">Threading</a>
+                <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+                <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">Advanced</div>
+                <a href="DataInterop.html" class="nav-item">C/C++ Interop</a>
+                <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+                <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+                <a href="Tutorials.html" class="nav-item">Tutorials</a>
+                <a href="WiiFeatures.html" class="nav-item active">Wii Features</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-title">GX Engine</div>
+                <a href="gx_engine/Initialization.html" class="nav-item">Initialization</a>
+                <a href="gx_engine/Fifo.html" class="nav-item">Command FIFO</a>
+                <a href="gx_engine/Vertex-Processing.html" class="nav-item">Vertex Processing</a>
+                <a href="gx_engine/Matrices.html" class="nav-item">Matrices</a>
+                <a href="gx_engine/TEV.html" class="nav-item">TEV Stages</a>
+                <a href="gx_engine/Textures.html" class="nav-item">Textures</a>
+                <a href="gx_engine/Lighting.html" class="nav-item">Lighting</a>
+                <a href="gx_engine/Pixel-Processing.html" class="nav-item">Pixel Processing</a>
+                <a href="gx_engine/State-Management.html" class="nav-item">State Management</a>
+            </div>
+        </nav>
+        <main class="content">
+            <div class="content-header">
+                <input type="text" id="pageSearch" class="search-box" placeholder="Search this page...">
+                <nav class="breadcrumb"><a href="../index.html">Home</a> &raquo; Wii Features & Accessories</nav>
+            </div>
+            <h1>Wii Features & Accessories</h1>
+            <p class="page-meta">Last updated: July 10, 2025 | Author: Wii GX Team</p>
+            <section class="page-content">
+            <p>This section provides code examples for using various Wii-specific features and accessories.</p>
+
+            <div id="Miis" class="feature-section">
+                <h3>Miis</h3>
+                <p>Retrieve console Miis using functions from <code>&lt;wiiuse/wpad.h&gt;</code>. Note: Mii functions might require specific library setups not covered here.</p>
+                <pre><code>
+#include &lt;gccore.h&gt;
+#include &lt;wiiuse/wpad.h&gt;
+
+// Assuming Mii library is initialized
+// This is a conceptual example; actual Mii retrieval is more complex
+/*
+mii_t mii;
+if (WD_GetMii(0, &mii) >= 0) {
+    printf("Mii Name: %s\n", mii.nickname);
+    // mii.pic contains raw Mii data
+}
+*/
+                </code></pre>
+            </div>
+
+            <div id="Wiimote-Core" class="feature-section">
+                <h3>Wiimote Core Sensors</h3>
+                <p>Enable and read accelerometer and button data:</p>
+                <pre><code>
+#include &lt;wiiuse/wpad.h&gt;
+
+WPAD_Init();
+// Set data format to read buttons and accelerometer
+WPAD_SetDataFormat(WPAD_CHAN_0, WPAD_FMT_BTNS_ACC);
+
+while (1) {
+    WPAD_ScanPads();
+    if (WPAD_ButtonsDown(WPAD_CHAN_0) & WPAD_BUTTON_HOME) break;
+
+    WPADData* d = WPAD_Data(WPAD_CHAN_0);
+    if (d->err == WPAD_ERR_NONE) {
+        printf("Accel: x=%d, y=%d, z=%d\n", d->accel.x, d->accel.y, d->accel.z);
+    }
+    VIDEO_WaitVSync();
+}
+                </code></pre>
+            </div>
+
+            <div id="Wiimote-IR" class="feature-section">
+                <h3>IR Pointer Coordinates</h3>
+                <p>Use the IR sensor for on-screen pointing:</p>
+                <pre><code>
+#include &lt;wiiuse/wpad.h&gt;
+
+WPAD_Init();
+// Set data format to include IR data
+WPAD_SetDataFormat(WPAD_CHAN_0, WPAD_FMT_BTNS_ACC_IR);
+
+while (1) {
+    WPAD_ScanPads();
+    if (WPAD_ButtonsDown(WPAD_CHAN_0) & WPAD_BUTTON_HOME) break;
+
+    WPADData* d = WPAD_Data(WPAD_CHAN_0);
+    if (d->ir.valid) {
+        printf("Pointer: x=%.2f, y=%.2f\n", d->ir.x, d->ir.y);
+        // For screen coordinates:
+        // int screenX = d->ir.x * rmode->fbWidth;
+        // int screenY = d->ir.y * rmode->efbHeight;
+    }
+    VIDEO_WaitVSync();
+}
+                </code></pre>
+            </div>
+
+            <div id="Nunchuk" class="feature-section">
+                <h3>Nunchuk Accessory</h3>
+                <p>Read joystick, buttons, and accelerometer from a connected Nunchuk:</p>
+                <pre><code>
+#include &lt;wiiuse/wpad.h&gt;
+
+WPAD_Init();
+// Nunchuk is auto-detected, but you can force a check
+WPAD_Probe(WPAD_CHAN_0, WPAD_EXP_NUNCHUK);
+
+while (1) {
+    WPAD_ScanPads();
+    if (WPAD_ButtonsDown(WPAD_CHAN_0) & WPAD_BUTTON_HOME) break;
+
+    WPADData* d = WPAD_Data(WPAD_CHAN_0);
+    if (d->exp.type == WPAD_EXP_NUNCHUK) {
+        printf("Nunchuk JS: x=%d, y=%d | Accel: x=%d, y=%d, z=%d\n", 
+            d->exp.nunchuk.js.pos.x, d->exp.nunchuk.js.pos.y,
+            d->exp.nunchuk.accel.x, d->exp.nunchuk.accel.y, d->exp.nunchuk.accel.z);
+    }
+    VIDEO_WaitVSync();
+}
+                </code></pre>
+            </div>
+
+            <div id="MotionPlus" class="feature-section">
+                <h3>MotionPlus & Rotation</h3>
+                <p>Access gyroscope data for more precise rotation tracking:</p>
+                <pre><code>
+#include &lt;wiiuse/wpad.h&gt;
+
+WPAD_Init();
+// MotionPlus is auto-detected when plugged in
+WPAD_Probe(WPAD_CHAN_0, WPAD_EXP_MOTIONPLUS);
+
+while (1) {
+    WPAD_ScanPads();
+    if (WPAD_ButtonsDown(WPAD_CHAN_0) & WPAD_BUTTON_HOME) break;
+
+    WPADData* d = WPAD_Data(WPAD_CHAN_0);
+    if (d->exp.type == WPAD_EXP_MOTIONPLUS) {
+        printf("Gyro: yaw=%.2f, pitch=%.2f, roll=%.2f\n", 
+            d->exp.motionplus.gyro.yaw, d->exp.motionplus.gyro.pitch, d->exp.motionplus.gyro.roll);
+    }
+    VIDEO_WaitVSync();
+}
+                </code></pre>
+            </div>
+
+            <div id="ClassicController" class="feature-section">
+                <h3>Classic Controller</h3>
+                <p>Read buttons and joystick values from the Classic Controller:</p>
+                <pre><code>
+#include &lt;wiiuse/wpad.h&gt;
+
+WPAD_Init();
+WPAD_Probe(WPAD_CHAN_0, WPAD_EXP_CLASSIC);
+
+while (1) {
+    WPAD_ScanPads();
+    if (WPAD_ButtonsDown(WPAD_CHAN_0) & WPAD_BUTTON_HOME) break;
+
+    WPADData* d = WPAD_Data(WPAD_Data(WPAD_CHAN_0));
+    if (d->exp.type == WPAD_EXP_CLASSIC) {
+        printf("Classic L-Stick: x=%d, y=%d | R-Stick: x=%d, y=%d\n",
+            d->exp.classic.ljs.pos.x, d->exp.classic.ljs.pos.y,
+            d->exp.classic.rjs.pos.x, d->exp.classic.rjs.pos.y);
+    }
+    VIDEO_WaitVSync();
+}
+                </code></pre>
+            </div>
+
+            <div id="BalanceBoard" class="feature-section">
+                <h3>Balance Board</h3>
+                <p>Sample code to read weight sensors on the Wii Balance Board:</p>
+                <pre><code>
+#include &lt;wiiuse/wpad.h&gt;
+
+WPAD_Init();
+// You may need to explicitly connect to the Balance Board
+// Set data format to read balance board data
+WPAD_SetDataFormat(WPAD_CHAN_0, WPAD_FMT_BALANCE);
+
+while (1) {
+    WPAD_ScanPads();
+    if (WPAD_ButtonsDown(WPAD_CHAN_0) & WPAD_BUTTON_HOME) break;
+    
+    WPADData* d = WPAD_Data(WPAD_CHAN_0);
+    if (d->err == WPAD_ERR_NONE &amp;&amp; d->exp.type == WPAD_EXP_BALANCE) {
+        printf("Balance: TL=%.2f, TR=%.2f, BL=%.2f, BR=%.2f\n",
+           d->balance.tl, d->balance.tr, d->balance.bl, d->balance.br);
+    }
+    VIDEO_WaitVSync();
+}
+                </code></pre>
+            </div>
+            </section>
+        </main>
+        <footer class="site-footer">
+            <div class="footer-content">&copy; 2025 Wii GX Documentation | Version 1.0.0</div>
+        </footer>
+    </div>
+    <script src="../search-index.js" defer></script>
+</body>
+</html>

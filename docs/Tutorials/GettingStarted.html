@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - Wii GX Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <div class="main-container">
+    <nav class="sidebar">
+      <!-- ...existing nav structure... -->
+    </nav>
+
+    <main class="content">
+      <h1>Getting Started with Wii GX</h1>
+      <p class="page-meta">Last updated: 07/10/2025 | Author: Documentation Team</p>
+      <section class="page-content">
+        <h2>Overview</h2>
+        <p>This guide walks you through setting up your development environment for Nintendo Wii GX graphics programming.</p>
+
+        <h2>Prerequisites</h2>
+        <ul>
+          <li>devkitPPC toolchain installed</li>
+          <li>libogc with GX library</li>
+          <li>Basic C programming knowledge</li>
+        </ul>
+
+        <h2>Environment Setup</h2>
+        <pre><code>
+# Install devkitPro and devkitPPC
+pacman -Syu devkitpro/devkitPPC devkitpro/libogc
+# Set environment variables
+export DEVKITPRO=/opt/devkitpro
+export DEVKITPPC=$DEVKITPRO/devkitPPC
+        </code></pre>
+
+        <h2>Project Structure</h2>
+        <pre><code>
+project/
+  include/
+    gx_init.h
+  source/
+    main.c
+  Makefile
+        </code></pre>
+
+        <h2>Building and Running</h2>
+        <pre><code>
+make
+./build/game.elf
+        </code></pre>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

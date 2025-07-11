@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mii Integration - GX Library Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+        <a href="Miis.html" class="nav-item">Mii Integration</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+      <h1>Using Miis in Homebrew</h1>
+      <p class="intro">The Wii stores a collection of user-created avatars called Miis in its internal memory. Homebrew applications can access this database to retrieve Mii data, including their appearance, name, and other attributes. This is handled by the <code>libwiimisc</code> library.</p>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>The Mii data is stored in the Mii Channel's data file on the NAND. To access it, you must initialize the Mii library, which reads this data into memory. You can then query the library for a list of all available Miis. Each Mii is represented by a <code>mii_t</code> struct, which contains all the information needed to identify and (with more advanced libraries) render the Mii.</p>
+        <p><strong>Important:</strong> Rendering a Mii is a complex process involving custom 3D models, textures, and shaders. This documentation covers how to <em>access</em> the Mii data. Actually drawing the Mii on screen would require a dedicated rendering engine or a library like <code>libmii</code>, which is beyond the scope of this GX guide.</p>
+      </section>
+
+      <section id="initialization">
+        <h2>Initialization and Cleanup</h2>
+        <p>Before you can access any Mii data, you must initialize the Mii library using <code>mii_init()</code>. This function reads the Mii database from the console's NAND. When your application is finished with the Mii data, you should call <code>mii_finish()</code> to free the allocated resources.</p>
+        <pre><code class="language-cpp">#include &lt;wiimisc/mii.h&gt;
+
+// In your application's startup code
+s32 result = mii_init();
+if (result != 0) {
+    printf("Failed to initialize Mii library. Error: %d", result);
+    // Handle error
+}
+
+// In your application's shutdown code
+mii_finish();
+</code></pre>
+      </section>
+
+      <section id="accessing-data">
+        <h2>Accessing Mii Data</h2>
+        <p>After successful initialization, you can get a list of all Miis using <code>mii_get_all_miis()</code>. This function returns a pointer to an array of <code>mii_t</code> structs and writes the total number of Miis found into a variable you provide.</p>
+        <p>The <code>mii_t</code> struct contains the following important fields:</p>
+        <ul>
+          <li><code>wchar_t name[10]</code>: The Mii's nickname (as a wide character string).</li>
+          <li><code>wchar_t creator[10]</code>: The name of the Mii's creator (as a wide character string).</li>
+          <li><code>u8 gender</code>: 0 for male, 1 for female.</li>
+          <li><code>u8 day, month</code>: The Mii's birthday.</li>
+          <li><code>u8 fav_color</code>: The Mii's favorite color (0-11).</li>
+          <li><code>u8 height, weight</code>: The Mii's body proportions (0-127).</li>
+          <li>Many other fields defining facial features, hair, glasses, etc.</li>
+        </ul>
+      </section>
+
+      <section id="code-example">
+        <h2>Full Code Example</h2>
+        <p>This example initializes the Mii library, retrieves all Miis, and prints their basic information.</p>
+        <pre><code class="language-cpp">#include &lt;wiimisc/mii.h&gt;
+#include &lt;wchar.h&gt; // For wcstombs
+#include &lt;stdio.h&gt;
+
+void PrintAllMiiInfo() {
+    s32 init_result = mii_init();
+    if (init_result != 0) {
+        printf("Could not initialize Mii library. Error: %d\n", init_result);
+        return;
+    }
+
+    int num_miis = 0;
+    mii_t* miis = mii_get_all_miis(&num_miis);
+
+    if (!miis) {
+        printf("Could not retrieve Mii list.\n");
+        mii_finish();
+        return;
+    }
+
+    printf("Found %d Miis on the console:\n", num_miis);
+
+    for (int i = 0; i < num_miis; ++i) {
+        // Convert wide character names to multibyte strings for printing
+        char mii_name[21] = {0};
+        char creator_name[21] = {0};
+        wcstombs(mii_name, miis[i].name, 20);
+        wcstombs(creator_name, miis[i].creator, 20);
+
+        printf("--- Mii #%d ---\n", i + 1);
+        printf("  Name: %s\n", mii_name);
+        printf("  Creator: %s\n", creator_name);
+        printf("  Gender: %s\n", miis[i].gender == 0 ? "Male" : "Female");
+        printf("  Birthday: %d/%d\n", miis[i].day, miis[i].month);
+    }
+
+    // The memory for 'miis' is managed by the library
+    // and will be freed by mii_finish()
+    mii_finish();
+}
+</code></pre>
+      </section>
+
+      <section id="function-reference">
+        <h2>Function Reference</h2>
+        <dl>
+          <dt><code>s32 mii_init(void)</code></dt>
+          <dd>
+            <p>Initializes the Mii library by reading the Mii database from the Wii's NAND. Must be called before any other Mii function.</p>
+            <p><strong>Returns:</strong> 0 on success, or a negative error code on failure.</p>
+          </dd>
+          <dt><code>mii_t* mii_get_all_miis(int* count)</code></dt>
+          <dd>
+            <p>Retrieves a list of all Miis stored on the console.</p>
+            <p><strong>Parameters:</strong></p>
+            <ul>
+              <li><code>count</code>: A pointer to an integer that will be filled with the number of Miis found.</li>
+            </ul>
+            <p><strong>Returns:</strong> A pointer to an array of <code>mii_t</code> structs, or <code>NULL</code> on failure. The memory is managed by the library.</p>
+          </dd>
+          <dt><code>void mii_finish(void)</code></dt>
+          <dd>
+            <p>Frees all resources used by the Mii library. Should be called when your application no longer needs Mii data.</p>
+          </dd>
+        </dl>
+      </section>
+
+    </main>
+  </div>
+</body>
+</html>

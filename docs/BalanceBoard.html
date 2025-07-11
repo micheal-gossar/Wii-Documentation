@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Balance Board - GX Reality Engine Documentation</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="logo"><a href="../index.html" style="text-decoration: none; color: white;">🎮 Wii GX Documentation</a></div>
+      <input type="text" class="search-box" placeholder="Search documentation..." id="searchBox">
+    </div>
+  </header>
+
+  <div class="main-container">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-title">Graphics</div>
+        <a href="Rendering.html" class="nav-item">Rendering Pipeline</a>
+        <a href="Shaders.html" class="nav-item">TEV Shaders</a>
+        <a href="Textures.html" class="nav-item">Texture Management</a>
+        <a href="Lighting.html" class="nav-item">Lighting System</a>
+        <a href="AdvancedRendering.html" class="nav-item">Advanced Rendering</a>
+        <a href="Performance.html" class="nav-item">Performance</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Input Systems</div>
+        <a href="WiimoteCore.html" class="nav-item">Wiimote Basics</a>
+        <a href="MotionPlus.html" class="nav-item">MotionPlus</a>
+        <a href="Nunchuk.html" class="nav-item">Nunchuk</a>
+        <a href="ClassicController.html" class="nav-item">Classic Controller</a>
+        <a href="BalanceBoard.html" class="nav-item">Balance Board</a>
+        <a href="IR.html" class="nav-item">IR Camera</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Audio</div>
+        <a href="AudioProcessing.html" class="nav-item">Audio Processing</a>
+        <a href="SpatialAudio.html" class="nav-item">3D Audio</a>
+        <a href="AudioStreaming.html" class="nav-item">Audio Streaming</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <a href="MemoryManagement.html" class="nav-item">Memory Management</a>
+        <a href="Threading.html" class="nav-item">Threading</a>
+        <a href="AssetPipeline.html" class="nav-item">Asset Pipeline</a>
+        <a href="NetworkProgramming.html" class="nav-item">Networking</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">Advanced</div>
+        <a href="DataInterop.html" class="nav-item">Data Interop</a>
+        <a href="UsefulStructs.html" class="nav-item">Useful Structs</a>
+        <a href="Misc.html" class="nav-item">Miscellaneous</a>
+        <a href="FunctionReference.html" class="nav-item">Function Reference</a>
+        <a href="Tutorials.html" class="nav-item">📚 Tutorials</a>
+      </div>
+      
+      <div class="nav-section">
+        <div class="nav-title">🚀 Revolutionary Tools</div>
+        <a href="../decompiler.html" class="nav-item">🔬 Auto ROM Decompiler</a>
+      </div>
+    </nav>
+
+    <main class="content">
+        <h1>Wii Balance Board</h1>
+        <p class="intro">The Wii Balance Board is a unique accessory, primarily used for fitness games like Wii Fit. It contains four pressure sensors (one at each corner) to measure weight and calculate the user's center of gravity.</p>
+
+        <section id="overview">
+          <h2>Overview</h2>
+          <p>The Balance Board functions as a standard Wiimote extension. It doesn't have buttons or sticks; its sole input is the weight data from its four sensors. This allows for applications that can react to the user shifting their weight.</p>
+          <p><strong>Note:</strong> The Balance Board is treated as a Wiimote. It will sync to one of the four player channels (WPAD_CHAN_0 to WPAD_CHAN_3). You cannot use a Wiimote and a Balance Board on the same channel simultaneously.</p>
+        </section>
+
+        <section id="enabling">
+          <h2>Enabling the Balance Board</h2>
+          <p>Like other extensions, the Balance Board is detected via the standard WPAD expansion mechanism. You must use an expansion callback to know when it's connected.</p>
+          <pre><code class="language-cpp">// In your initialization code
+// Note: The Balance Board uses its own channel, separate from any Wiimotes.
+// You might dedicate WPAD_CHAN_0 to the board, for example.
+WPAD_SetExpansionCallback(expansion_callback);
+
+// You can probe to see if it's already connected
+u32 type;
+WPAD_Probe(WPAD_CHAN_0, &type);
+if (type == WPAD_EXP_BALANCE) {
+    // Balance Board is connected
+}
+</code></pre>
+        </section>
+
+        <section id="reading-data">
+          <h2>Reading Balance Board Data</h2>
+          <p>Data is accessed via the <code>expansion_t</code> member of the <code>WPADData</code> struct after a call to <code>WPAD_ScanPads()</code>. The type must be checked to ensure it is <code>WPAD_EXP_BALANCE</code>.</p>
+          <p>The key data is contained within the <code>balance_t</code> struct (<code>wpad_data->expansion.balance</code>):</p>
+          <ul>
+            <li><code>f32 tl, tr, bl, br</code>: The raw weight reading from each sensor: Top-Left, Top-Right, Bottom-Left, and Bottom-Right. The units are arbitrary but consistent.</li>
+            <li><code>f32 weight</code>: The total weight calculated from the sum of all four sensors.</li>
+            <li><code>f32 x, y</code>: The calculated center of gravity (CoG). The values range from approximately -1.0 to 1.0, where (0, 0) is the center of the board.</li>
+          </ul>
+        </section>
+
+        <section id="calibration">
+          <h2>Calibration (Zeroing)</h2>
+          <p>When the Balance Board is turned on, the initial sensor readings may not be zero, even with no weight on them. To get accurate readings, you must perform a calibration step. This involves reading the initial sensor values when the user is not on the board and storing them as offsets. You then subtract these offsets from all subsequent readings.</p>
+          <p>There is no built-in function for this; you must implement it yourself. A common approach is to ask the user to get off the board, press a button (e.g., the 'A' button on a separate Wiimote), and then record the sensor values as the zero-point offsets.</p>
+          <pre><code class="language-cpp">// Store these offsets globally or in a class
+float cal_tl, cal_tr, cal_bl, cal_br;
+
+void CalibrateBalanceBoard(int chan) {
+    WPADData* wpad_data = WPAD_Data(chan);
+    balance_t* balance_data = &wpad_data->expansion.balance;
+
+    cal_tl = balance_data->tl;
+    cal_tr = balance_data->tr;
+    cal_bl = balance_data->bl;
+    cal_br = balance_data->br;
+}
+
+// Then, when reading data:
+float current_weight_tl = balance_data->tl - cal_tl;
+// ... and so on for other sensors.
+</code></pre>
+        </section>
+
+        <section id="code-example">
+          <h2>Full Code Example</h2>
+          <p>This example shows how to detect the board, run a calibration, and then continuously read the calibrated weight and center of gravity.</p>
+          <pre><code class="language-cpp">// Assume board is on channel 1, a regular Wiimote on channel 0
+// to trigger calibration.
+
+bool board_connected = false;
+bool board_calibrated = false;
+
+// Calibration offsets
+float offset_tl = 0.0f, offset_tr = 0.0f, offset_bl = 0.0f, offset_br = 0.0f;
+
+void expansion_callback(s32 chan, s32 type) {
+    if (chan == WPAD_CHAN_1) { // Check for the board on channel 1
+        if (type == WPAD_EXP_BALANCE) {
+            board_connected = true;
+            board_calibrated = false; // Needs recalibration
+        } else {
+            board_connected = false;
+        }
+    }
+}
+
+void UpdateBalanceBoard() {
+    if (!board_connected) return;
+
+    WPADData* board_data = WPAD_Data(WPAD_CHAN_1);
+    WPADData* remote_data = WPAD_Data(WPAD_CHAN_0);
+
+    // Check for calibration request (e.g., pressing 'A' on Wiimote 1)
+    if (remote_data->btns_dwn & WPAD_BUTTON_A) {
+        if (!board_calibrated) {
+            balance_t* raw_data = &board_data->expansion.balance;
+            offset_tl = raw_data->tl;
+            offset_tr = raw_data->tr;
+            offset_bl = raw_data->bl;
+            offset_br = raw_data->br;
+            board_calibrated = true;
+        }
+    }
+
+    if (!board_calibrated) {
+        return;
+    }
+
+    // Read calibrated data
+    balance_t* raw_data = &board_data->expansion.balance;
+    float w_tl = raw_data->tl - offset_tl;
+    float w_tr = raw_data->tr - offset_tr;
+    float w_bl = raw_data->bl - offset_bl;
+    float w_br = raw_data->br - offset_br;
+
+    float total_weight = w_tl + w_tr + w_bl + w_br;
+
+    if (total_weight > 1.0f) { // Adjust threshold as needed
+        // Calculate Center of Gravity (CoG)
+        float x = ((w_tr + w_br) - (w_tl + w_bl)) / total_weight;
+        float y = ((w_tl + w_tr) - (w_bl + w_br)) / total_weight;
+    }
+}
+
+// In main, before the loop:
+WPAD_SetExpansionCallback(expansion_callback);
+
+// In the main loop:
+WPAD_ScanPads();
+UpdateBalanceBoard();
+</code></pre>
+        </section>
+
+         <section id="function-reference">
+          <h2>Function Reference</h2>
+          <dl>
+            <dt><code>void WPAD_SetExpansionCallback(WPADExpansionCallback callback)</code></dt>
+            <dd>
+              <p>Registers a callback function that will be invoked whenever an expansion device is connected or disconnected. This is the primary method for detecting the Balance Board.</p>
+            </dd>
+            <dt><code>s32 WPAD_Probe(s32 chan, u32* type)</code></dt>
+            <dd>
+              <p>Manually checks for the presence and type of an expansion device on a specific Wiimote channel. Useful for an initial check at startup.</p>
+            </dd>
+          </dl>
+        </section>
+    </main>
+  </div>
+</body>
+</html>

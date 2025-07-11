@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GX Vertex Processing - Wii GX Documentation</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="main-container">
+        <nav class="sidebar">
+            <h3><a href="../index.html">Home</a></h3>
+            <ul>
+                <li><a href="../docs/Rendering.html">Rendering</a></li>
+                <li><a href="../docs/Primitives.html">Primitives</a></li>
+                <li><a href="../docs/Textures.html">Textures</a></li>
+                <li><a href="../docs/Matrices.html">Matrices</a></li>
+                <li><a href="../docs/Lighting.html">Lighting</a></li>
+                <li><a href="../docs/Shaders.html">Shaders</a></li>
+                <li><a href="../docs/StateManagement.html">State Management</a></li>
+                <li><a href="../docs/MemoryManagement.html">Memory Management</a></li>
+                <li><a href="../docs/UsefulStructs.html">Useful Structs</a></li>
+                <li><a href="../docs/WiimoteCore.html">Wiimote Core</a></li>
+                <li><a href="../docs/Nunchuk.html">Nunchuk</a></li>
+                <li><a href="../docs/ClassicController.html">Classic Controller</a></li>
+                <li><a href="../docs/MotionPlus.html">MotionPlus</a></li>
+                <li><a href="../docs/BalanceBoard.html">Balance Board</a></li>
+                <li><a href="../docs/IR.html">IR</a></li>
+                <li><a href="../docs/Miis.html">Miis</a></li>
+                <li><a href="../docs/NetworkProgramming.html">Network Programming</a></li>
+                <li><a href="../docs/AudioProcessing.html">Audio Processing</a></li>
+                <li><a href="../docs/DataInterop.html">C/C++ Interop</a></li>
+                <li><a href="../docs/Performance.html">Performance</a></li>
+                <li><a href="../docs/AdvancedRendering.html">Advanced Rendering</a></li>
+                <li><a href="../docs/AssetPipeline.html">Asset Pipeline</a></li>
+                <li><a href="../docs/FunctionReference.html">Function Reference</a></li>
+                <li><a href="../docs/Tutorials.html">Tutorials</a></li>
+                <li><a href="../docs/WiiFeatures.html">Wii Features</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <h1>GX Vertex Processing</h1>
+            <p>A vertex is the fundamental building block of 3D graphics, representing a point in space. In GX, a vertex is more than just a position; it's a collection of attributes like color, texture coordinates, and normals. This page explains how to define the structure of your vertex data and send it to the GPU.</p>
+
+            <h2>Vertex Attributes</h2>
+            <p>GX can process several types of attributes for each vertex. The most common ones are:</p>
+            <ul>
+                <li><strong>Position:</strong> The (X, Y, Z) coordinates of the vertex in 3D space.</li>
+                <li><strong>Color:</strong> The RGBA color of the vertex. Colors are interpolated across the face of a polygon.</li>
+                <li><strong>Normal:</strong> A vector that defines the orientation of the surface at the vertex, crucial for lighting calculations.</li>
+                <li><strong>Texture Coordinates:</strong> The (U, V) coordinates that map a point on a texture to the vertex. GX supports up to 8 sets of texture coordinates per vertex.</li>
+            </ul>
+
+            <h2>Defining a Vertex Format</h2>
+            <p>Before you can send vertex data, you must tell GX what attributes each vertex contains and how that data is formatted. This is a two-step process.</p>
+
+            <h3>1. Set Vertex Attribute Formats (VAT)</h3>
+            <p>The Vertex Attribute Table (VAT) defines the data type for each attribute (e.g., is the color made of four 8-bit unsigned integers, or four 32-bit floats?). This is configured with <code>GX_SetVtxAttrFmt</code>.</p>
+            <p>You define up to 8 different vertex formats (<code>GX_VTXFMT0</code> through <code>GX_VTXFMT7</code>), allowing you to switch between different vertex layouts efficiently.</p>
+            <pre><code class="language-c">
+#include &lt;gx.h&gt;
+
+// Configure vertex format 0 (GX_VTXFMT0)
+// We will use this format for vertices that have position and color data.
+
+// Attribute: Position (GX_VA_POS)
+// Data Type: 32-bit float (GX_F32)
+// Number of components: 3 (X, Y, Z)
+// Fractional bits: 0 (not applicable for floats)
+GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+
+// Attribute: Color (GX_VA_CLR0)
+// Data Type: 8-bit R, G, B, A (GX_RGBA8)
+// Number of components: 4 (RGBA)
+// Fractional bits: 0
+GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+            </code></pre>
+
+            <h3>2. Describe Which Attributes to Send</h3>
+            <p>Once the formats are defined in the VAT, you must specify which of those attributes will actually be sent down the FIFO for a particular drawing operation. This is done with <code>GX_SetVtxDesc</code>.</p>
+            <p>You can specify whether the data for an attribute will be sent directly (<code>GX_DIRECT</code>) for each vertex, or if it should be indexed from an array (<code>GX_INDEX8</code> or <code>GX_INDEX16</code>).</p>
+            <pre><code class="language-c">
+// For the upcoming drawing calls, we will send position and color data directly.
+GX_ClearVtxDesc(); // Good practice to clear the descriptor first
+
+// We will be sending position data.
+GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
+
+// We will be sending color data for the primary color channel (CLR0).
+GX_SetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+            </code></pre>
+            <p>After these calls, when you use <code>GX_Begin</code> with <code>GX_VTXFMT0</code>, GX expects you to provide position and color data for each vertex.</p>
+
+            <h2>Loading Vertex Data into Arrays</h2>
+            <p>For performance, you should store your vertex data in arrays in main memory and tell GX where to find them. This is much faster than sending data one component at a time (immediate mode).</p>
+            <p>This is done with <code>GX_SetArray</code>. The data must be 32-byte aligned.</p>
+            <pre><code class="language-c">
+// Example vertex data arrays
+f32 my_positions[] ATTRIBUTE_ALIGN(32) = {
+    -1.0f, -1.0f, 0.0f,
+     1.0f, -1.0f, 0.0f,
+     0.0f,  1.0f, 0.0f
+};
+
+u8 my_colors[] ATTRIBUTE_ALIGN(32) = {
+    255, 0, 0, 255,   // Red
+    0, 255, 0, 255,   // Green
+    0, 0, 255, 255    // Blue
+};
+
+// Tell GX where to find the position data
+// Stride is the number of bytes between the start of one attribute and the next.
+// For a tightly packed array, it's the size of the data type.
+GX_SetArray(GX_VA_POS, my_positions, sizeof(f32) * 3);
+
+// Tell GX where to find the color data
+GX_SetArray(GX_VA_CLR0, my_colors, sizeof(u8) * 4);
+            </code></pre>
+
+            <p>Once the arrays are set up, you can use indexed drawing. Instead of sending the data itself, you just send an index into the array.</p>
+            <pre><code class="language-c">
+// Change the vertex descriptor to use indexed data
+GX_SetVtxDesc(GX_VA_POS, GX_INDEX16);
+GX_SetVtxDesc(GX_VA_CLR0, GX_INDEX16);
+
+// Begin drawing
+GX_Begin(GX_TRIANGLES, GX_VTXFMT0, 3);
+    GX_Vtx_u16(0); // Use vertex at index 0 from the arrays
+    GX_Vtx_u16(1); // Use vertex at index 1
+    GX_Vtx_u16(2); // Use vertex at index 2
+GX_End();
+            </code></pre>
+            <p>This is the most common and efficient way to render complex models, as it avoids duplicating vertex data that is shared between multiple polygons.</p>
+
+        </main>
+    </div>
+    <script src="../scripts.js"></script>
+</body>
+</html>
